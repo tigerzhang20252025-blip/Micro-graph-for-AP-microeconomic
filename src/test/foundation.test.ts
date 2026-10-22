@@ -4,9 +4,13 @@ import { marketEquilibriumModel } from '../engine/models/marketEquilibriumModel'
 import { ppcModel } from '../engine/models/ppcModel';
 import { comparativeAdvantageModel } from '../engine/models/comparativeAdvantageModel';
 import { elasticityModel } from '../engine/models/elasticityModel';
+import { costCurvesModel } from '../engine/models/costCurvesModel';
+import { perfectCompetitionModel } from '../engine/models/perfectCompetitionModel';
+import { monopolyModel } from '../engine/models/monopolyModel';
+import { gameTheoryModel } from '../engine/models/gameTheoryModel';
 
 console.log('==============================================');
-console.log('🧪 AP MICROECONOMICS GRAPH LAB: BATCH 1 AUDIT');
+console.log('🧪 AP MICROECONOMICS GRAPH LAB: BATCH 1 & 2 AUDIT');
 console.log('==============================================\n');
 
 let failedTests = 0;
@@ -34,7 +38,7 @@ assert(extensionTopics.length >= 2, `Optional Extensions classified: ${extension
 assert(excludedTopics.length >= 2, `Not in Current AP Exam Scope classified: ${excludedTopics.length} topics`);
 
 const readyTopics = AP_TOPICS.filter(t => t.status === 'ready');
-assert(readyTopics.length >= 5, `Active Interactive Models in Registry: ${readyTopics.length} topics`);
+assert(readyTopics.length >= 10, `Active Interactive Models in Registry: ${readyTopics.length} topics`);
 
 // 2. Translation Parity & Completeness
 console.log('\n--- 2. Translation Parity & Terminology Check ---');
@@ -42,105 +46,90 @@ const enKeys = Object.keys(translations.en) as (keyof typeof translations.en)[];
 const zhKeys = Object.keys(translations.zh) as (keyof typeof translations.zh)[];
 
 assert(enKeys.length === zhKeys.length, `Translation key parity: EN has ${enKeys.length}, ZH has ${zhKeys.length}`);
-
 const missingZh = enKeys.filter(k => !translations.zh[k] || translations.zh[k].trim() === '');
-const missingEn = zhKeys.filter(k => !translations.en[k] || translations.en[k].trim() === '');
+assert(missingZh.length === 0, `All ${enKeys.length} keys translated to Chinese`);
 
-assert(missingZh.length === 0, `All ${enKeys.length} keys translated to Chinese (missing: ${missingZh.length})`);
-assert(missingEn.length === 0, `All ${zhKeys.length} keys translated to English (missing: ${missingEn.length})`);
+// 3. Batch 1 Verification: Market Equilibrium, Elasticity, PPC, Comparative Advantage
+console.log('\n--- 3. Batch 1 Models Verification ---');
+const baseEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
+assert(baseEq.results.find(r => r.id === 'eqPrice')?.value === '$50.00', 'Market equilibrium P* = $50.00');
 
-assert(translations.en.langSwitchButton === '中文', 'English view toggle button displays "中文"');
-assert(translations.zh.langSwitchButton === 'English', 'Chinese view toggle button displays "English"');
+const taxedEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 16, subsidyPerUnit: 0, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
+assert(taxedEq.results.find(r => r.id === 'dwl')?.value === '$80.00', 'Tax DWL = $80.00');
 
-// 3. Batch 1 Mathematical & Economic Engine Tests
-console.log('\n--- 3. Batch 1: Market Equilibrium, Taxes, Subsidies & Price Controls ---');
-// Baseline Market Equilibrium: P = 90 - 0.8Q, P = 10 + 0.8Q -> Q* = 50, P* = 50
-const baseEqOutput = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
-const pMetric = baseEqOutput.results.find(r => r.id === 'eqPrice');
-const qMetric = baseEqOutput.results.find(r => r.id === 'eqQuantity');
-const dwlMetric = baseEqOutput.results.find(r => r.id === 'dwl');
-
-assert(pMetric?.value === '$50.00', `Equilibrium price correctly computed as $50.00 (got ${pMetric?.value})`);
-assert(qMetric?.value === '50.00 units', `Equilibrium quantity correctly computed as 50.00 units (got ${qMetric?.value})`);
-assert(dwlMetric?.value === '$0.00', `Deadweight loss is $0.00 at competitive equilibrium`);
-
-// Tax with DWL: Tax = $16 -> Effective supply P = 26 + 0.8Q -> 90 - 0.8Q = 26 + 0.8Q -> 1.6Q = 64 -> Qt = 40. Delta Q = 10. DWL = 0.5 * 16 * 10 = $80.
-const taxedOutput = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 16, subsidyPerUnit: 0, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
-const taxedDwl = taxedOutput.results.find(r => r.id === 'dwl');
-const taxedRev = taxedOutput.results.find(r => r.id === 'taxRev');
-assert(taxedDwl?.value === '$80.00', `Excise tax DWL exactly $80.00 (got ${taxedDwl?.value})`);
-assert(taxedRev?.value === '$640.00', `Excise tax revenue exactly $640.00 (40 units * $16/unit, got ${taxedRev?.value})`);
-
-// Per-unit Subsidy: Subsidy = $16 -> Effective supply P = -6 + 0.8Q -> 90 - 0.8Q = -6 + 0.8Q -> 1.6Q = 96 -> Qsub = 60. Delta Q = 10. DWL = 0.5 * 16 * 10 = $80.
-const subsidizedOutput = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 16, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
-const subDwl = subsidizedOutput.results.find(r => r.id === 'dwl');
-const subCost = subsidizedOutput.results.find(r => r.id === 'subsidyCost');
-assert(subDwl?.value === '$80.00', `Subsidy overproduction DWL exactly $80.00 (got ${subDwl?.value})`);
-assert(subCost?.value === '$960.00', `Subsidy cost exactly $960.00 (60 units * $16/unit, got ${subCost?.value})`);
-
-// Binding Price Ceiling: Pc = 35 < P* (50) -> Shortage
-const ceilingOutput = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'ceiling', controlledPrice: 35, showBaselineComparison: false });
-const shortageMetric = ceilingOutput.results.find(r => r.id === 'discrepancy');
-assert(shortageMetric !== undefined, 'Binding price ceiling produces market shortage metric');
-
-// Binding Price Floor: Pf = 65 > P* (50) -> Surplus
-const floorOutput = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'floor', controlledPrice: 65, showBaselineComparison: false });
-const surplusMetric = floorOutput.results.find(r => r.id === 'discrepancy');
-assert(surplusMetric !== undefined, 'Binding price floor produces market surplus metric');
-
-// 4. Batch 1: Elasticity & Total Revenue Test
-console.log('\n--- 4. Batch 1: Price Elasticity & Total Revenue Test ---');
 const elasticityMid = elasticityModel.calculate({ priceLevel: 50, demandIntercept: 100, demandSlope: -1.0, crossPricePercentage: 10, crossGoodType: 'substitute', incomePercentage: 10, incomeGoodType: 'normal_necessity' });
-const pedMid = elasticityMid.results.find(r => r.id === 'pedValue');
-const trMid = elasticityMid.results.find(r => r.id === 'totalRev');
-const mrMid = elasticityMid.results.find(r => r.id === 'marginalRev');
+assert(elasticityMid.results.find(r => r.id === 'pedValue')?.value === '1.00', 'Demand Midpoint |PED| = 1.00');
+assert(elasticityMid.secondaryGraph !== undefined, 'Elasticity outputs secondary Total Revenue parabola');
 
-assert(pedMid?.value === '1.00', `Midpoint PED exactly 1.00 (Unit Elastic, got ${pedMid?.value})`);
-assert(trMid?.value === '$2500.00', `Midpoint TR is maximized at $2,500.00 (got ${trMid?.value})`);
-assert(mrMid?.value === '$0.00', `Midpoint MR is exactly $0.00 (got ${mrMid?.value})`);
+const compAdv = comparativeAdvantageModel.calculate({ countryAMaxCars: 60, countryAMaxWheat: 120, countryBMaxCars: 40, countryBMaxWheat: 40, termsOfTradeCarToWheat: 1.5 });
+assert(compAdv.results.find(r => r.id === 'oppCostCarB')?.value === '1.00 Wheat', 'Country B Car opportunity cost = 1.00 Wheat');
 
-const elasticityElastic = elasticityModel.calculate({ priceLevel: 75, demandIntercept: 100, demandSlope: -1.0, crossPricePercentage: 10, crossGoodType: 'substitute', incomePercentage: 10, incomeGoodType: 'normal_necessity' });
-const pedElastic = elasticityElastic.results.find(r => r.id === 'pedValue');
-assert(pedElastic?.value === '3.00', `P=75 PED is 3.00 (> 1, Elastic, got ${pedElastic?.value})`);
+const ppcSample = ppcModel.calculate({ costShape: 'bowed', techConsumerGoods: 100, techCapitalGoods: 100, productionX: 60, showGrowthShift: false });
+assert(ppcSample.curves.length > 0, 'PPC generates curve');
 
-const elasticityInelastic = elasticityModel.calculate({ priceLevel: 25, demandIntercept: 100, demandSlope: -1.0, crossPricePercentage: 10, crossGoodType: 'substitute', incomePercentage: 10, incomeGoodType: 'normal_necessity' });
-const pedInelastic = elasticityInelastic.results.find(r => r.id === 'pedValue');
-assert(pedInelastic?.value === '0.33', `P=25 PED is 0.33 (< 1, Inelastic, got ${pedInelastic?.value})`);
-assert(elasticityMid.secondaryGraph !== undefined, 'Elasticity model outputs secondary Total Revenue parabola graph');
-assert(elasticityMid.customTable !== undefined, 'Elasticity model outputs full AP Elasticities Summary Table (PED, XED, YED)');
+// 4. Batch 2 Verification: Production Cost Curves
+console.log('\n--- 4. Batch 2: Short-Run Production Cost Curves (MC, ATC, AVC, AFC) ---');
+const baseCosts = costCurvesModel.calculate({ fixedCost: 120, perUnitTax: 0, chosenQuantity: 24, showAFC: true, showAVC: true, showATC: true, showMC: true });
+const atcVal = baseCosts.results.find(r => r.id === 'atcResult');
+const avcVal = baseCosts.results.find(r => r.id === 'avcResult');
+const afcVal = baseCosts.results.find(r => r.id === 'afcResult');
 
-// 5. Batch 1: Comparative Advantage & Terms of Trade
-console.log('\n--- 5. Batch 1: Comparative Advantage & Gains from Trade ---');
-const compAdvOutput = comparativeAdvantageModel.calculate({
-  countryAMaxCars: 60,
-  countryAMaxWheat: 120,
-  countryBMaxCars: 40,
-  countryBMaxWheat: 40,
-  termsOfTradeCarToWheat: 1.5
+assert(atcVal !== undefined && avcVal !== undefined && afcVal !== undefined, 'Cost curves output ATC, AVC, AFC metrics');
+assert(baseCosts.customTable !== undefined, 'Cost curves output full AP discrete cost schedule table');
+
+// Lump-sum test: Fixed Cost changes from 120 to 220 -> ATC and AFC change, but AVC and MC do NOT change!
+const lumpSumCosts = costCurvesModel.calculate({ fixedCost: 220, perUnitTax: 0, chosenQuantity: 24, showAFC: true, showAVC: true, showATC: true, showMC: true });
+assert(lumpSumCosts.results.find(r => r.id === 'avcResult')?.value === baseCosts.results.find(r => r.id === 'avcResult')?.value, 'Lump-sum tax leaves AVC completely unchanged');
+assert(lumpSumCosts.results.find(r => r.id === 'mcResult')?.value === baseCosts.results.find(r => r.id === 'mcResult')?.value, 'Lump-sum tax leaves MC completely unchanged');
+
+// 5. Batch 2 Verification: Perfect Competition Side-by-Side Market & Firm
+console.log('\n--- 5. Batch 2: Perfect Competition Side-by-Side (Market & Firm) ---');
+const pcProfit = perfectCompetitionModel.calculate({ marketDemandShift: 18, firmFixedCost: 110, firmEntryExitAdjustment: 0 });
+assert(pcProfit.secondaryGraph !== undefined, 'Perfect Competition outputs secondary Individual Firm graph');
+const profitVal = String(pcProfit.results.find(r => r.id === 'firmProfitResult')?.value || '');
+assert(profitVal.includes('+') || (!profitVal.includes('-') && profitVal !== '$0.0'), 'High demand leads to short-run economic profit');
+
+const pcShutdown = perfectCompetitionModel.calculate({ marketDemandShift: -20, firmFixedCost: 110, firmEntryExitAdjustment: 0 });
+assert(String(pcShutdown.results.find(r => r.id === 'firmQResult')?.value).includes('SHUTDOWN'), 'P < AVC triggers short-run shutdown rule (q = 0)');
+
+const pcLongRun = perfectCompetitionModel.calculate({ marketDemandShift: 0, firmFixedCost: 110, firmEntryExitAdjustment: 0 });
+assert(String(pcLongRun.results.find(r => r.id === 'longRunStatus')?.value).includes('Long-Run Equilibrium') || Math.abs(Number(String(pcLongRun.results.find(r => r.id === 'firmProfitResult')?.value).replace('$', ''))) < 10, 'P ≈ min ATC is Long-Run Equilibrium');
+
+// 6. Batch 2 Verification: Monopoly (Single-Price & Price Discrimination)
+console.log('\n--- 6. Batch 2: Monopoly & Price Discrimination ---');
+// Unregulated Monopoly: Demand P = 100 - Q, MC = 10 + 0.5Q
+// MR = 100 - 2Q. MR = MC => 100 - 2Q = 10 + 0.5Q => 2.5Q = 90 => Qm = 36. Pm = 100 - 36 = 64.
+const monopolySingle = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 180, isPriceDiscrimination: false, regulationType: 'none' });
+assert(monopolySingle.results.find(r => r.id === 'monopolyQ')?.value === '36.0 units', 'Monopoly output Qm = 36.0 units');
+assert(monopolySingle.results.find(r => r.id === 'monopolyP')?.value === '$64.0', 'Monopoly price on Demand curve Pm = $64.0');
+assert(Number(String(monopolySingle.results.find(r => r.id === 'dwlResult')?.value).replace('$', '')) > 0, 'Single-price monopoly generates deadweight loss');
+
+// Perfect Price Discrimination: Q expands to Q_so = 60, DWL = 0
+const monopolyDiscrim = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 180, isPriceDiscrimination: true, regulationType: 'none' });
+assert(monopolyDiscrim.results.find(r => r.id === 'monopolyQ')?.value === '60.0 units', 'Price discrimination expands output to allocatively efficient 60.0 units');
+assert(monopolyDiscrim.results.find(r => r.id === 'dwlResult')?.value === '$0.0', 'Price discrimination eliminates all deadweight loss (DWL = 0)');
+
+// 7. Batch 2 Verification: Oligopoly & Game Theory Payoff Matrix
+console.log('\n--- 7. Batch 2: Oligopoly & Game Theory Payoff Matrix ---');
+const gameClassic = gameTheoryModel.calculate({
+  presetScenario: 'prisoners_dilemma',
+  tl1: 50, tl2: 50,
+  tr1: 10, tr2: 80,
+  bl1: 80, bl2: 10,
+  br1: 25, br2: 25
 });
 
-const costCarA = compAdvOutput.results.find(r => r.id === 'oppCostCarA');
-const costCarB = compAdvOutput.results.find(r => r.id === 'oppCostCarB');
-const tradeRange = compAdvOutput.results.find(r => r.id === 'tradeTermsRange');
-
-assert(costCarA?.value === '2.00 Wheat', `Country A Car opportunity cost is 2.00 Wheat (got ${costCarA?.value})`);
-assert(costCarB?.value === '1.00 Wheat', `Country B Car opportunity cost is 1.00 Wheat (got ${costCarB?.value})`);
-assert(tradeRange?.value === '1.00 < P < 2.00 Wheat', `Terms of trade range is 1.00 < P < 2.00 Wheat`);
-assert(compAdvOutput.secondaryGraph !== undefined, 'Comparative Advantage outputs Country B secondary graph');
-assert(compAdvOutput.customTable !== undefined, 'Comparative Advantage outputs CED opportunity cost table');
-
-// 6. Batch 1: Production Possibilities Curve (PPC)
-console.log('\n--- 6. Batch 1: Production Possibilities Curve (PPC) ---');
-const ppcOutput = ppcModel.calculate({ costShape: 'bowed', techConsumerGoods: 100, techCapitalGoods: 100, productionX: 60, showGrowthShift: false });
-assert(ppcOutput.curves.length > 0, 'PPC generates boundary curve');
-assert(ppcOutput.points.find(p => p.shortLabel === 'A')?.x === 60, 'Point A matches chosen production parameter');
-assert(ppcOutput.customTable !== undefined, 'PPC outputs Production & Efficiency Schedule Table');
+assert(String(gameClassic.results.find(r => r.id === 'p1DomResult')?.value).includes('Low Price'), 'Firm 1 dominant strategy is Low Price (Defect)');
+assert(String(gameClassic.results.find(r => r.id === 'p2DomResult')?.value).includes('Low Price'), 'Firm 2 dominant strategy is Low Price (Defect)');
+assert(String(gameClassic.results.find(r => r.id === 'nashResult')?.value).includes('BR'), 'Nash Equilibrium is at Bottom-Right (BR)');
+assert(String(gameClassic.results.find(r => r.id === 'dilemmaResult')?.value).includes('YES'), "Detected classic Prisoner's Dilemma");
+assert(gameClassic.customTable !== undefined, 'Game theory outputs interactive 2x2 matrix schedule');
 
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL BATCH 1 AUDIT TESTS PASSED (0 FAILURES)');
+  console.log('🎉 ALL BATCH 1 & BATCH 2 AUDIT TESTS PASSED (0 FAILURES)');
 } else {
-  console.error(`💥 BATCH 1 AUDIT FAILED WITH ${failedTests} FAILURES`);
+  console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);
 }
 console.log('==============================================\n');

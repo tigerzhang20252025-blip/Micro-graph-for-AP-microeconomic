@@ -189,6 +189,128 @@ export function generateLinearPoints(
 }
 
 /**
+ * Cost curve calculation utilities
+ */
+export interface CostFunctionParams {
+  fixedCost: number;       // TFC
+  m0: number;              // intercept for MC
+  m1: number;              // linear coefficient for MC
+  m2: number;              // quadratic coefficient for MC
+  perUnitTax?: number;     // shifts MC, AVC, ATC vertically
+}
+
+export function evaluateMC(p: CostFunctionParams, q: number): number {
+  const tax = p.perUnitTax || 0;
+  return p.m0 - p.m1 * q + p.m2 * q * q + tax;
+}
+
+export function evaluateAVC(p: CostFunctionParams, q: number): number {
+  if (q <= 0) return p.m0;
+  const tax = p.perUnitTax || 0;
+  return p.m0 - (p.m1 / 2) * q + (p.m2 / 3) * q * q + tax;
+}
+
+export function evaluateATC(p: CostFunctionParams, q: number): number {
+  if (q <= 0) return 999;
+  return evaluateAVC(p, q) + p.fixedCost / q;
+}
+
+export function evaluateAFC(p: CostFunctionParams, q: number): number {
+  if (q <= 0) return 999;
+  return p.fixedCost / q;
+}
+
+/**
+ * 2x2 Game Theory Payoff Matrix Solver
+ */
+export interface PayoffCell {
+  p1: number;
+  p2: number;
+}
+
+export interface PayoffMatrix2x2 {
+  TL: PayoffCell; // Top-Left
+  TR: PayoffCell; // Top-Right
+  BL: PayoffCell; // Bottom-Left
+  BR: PayoffCell; // Bottom-Right
+}
+
+export interface GameTheorySolution {
+  p1DominantStrategy: 'Top' | 'Bottom' | 'None';
+  p2DominantStrategy: 'Left' | 'Right' | 'None';
+  nashEquilibria: ('TL' | 'TR' | 'BL' | 'BR')[];
+  isPrisonersDilemma: boolean;
+  explanationEn: string;
+  explanationZh: string;
+}
+
+export function solve2x2Game(matrix: PayoffMatrix2x2, p1ActionNames: [string, string] = ['Top', 'Bottom'], p2ActionNames: [string, string] = ['Left', 'Right']): GameTheorySolution {
+  const { TL, TR, BL, BR } = matrix;
+
+  // Player 1 Dominant Strategy check:
+  // Top is dominant if TL.p1 > BL.p1 AND TR.p1 > BR.p1
+  // Bottom is dominant if BL.p1 > TL.p1 AND BR.p1 > TR.p1
+  let p1Dominant: 'Top' | 'Bottom' | 'None' = 'None';
+  if (TL.p1 > BL.p1 && TR.p1 > BR.p1) {
+    p1Dominant = 'Top';
+  } else if (BL.p1 > TL.p1 && BR.p1 > TR.p1) {
+    p1Dominant = 'Bottom';
+  }
+
+  // Player 2 Dominant Strategy check:
+  // Left is dominant if TL.p2 > TR.p2 AND BL.p2 > BR.p2
+  // Right is dominant if TR.p2 > TL.p2 AND BR.p2 > BL.p2
+  let p2Dominant: 'Left' | 'Right' | 'None' = 'None';
+  if (TL.p2 > TR.p2 && BL.p2 > BR.p2) {
+    p2Dominant = 'Left';
+  } else if (TR.p2 > TL.p2 && BR.p2 > BL.p2) {
+    p2Dominant = 'Right';
+  }
+
+  // Nash Equilibria: Best-response intersection
+  const nash: ('TL' | 'TR' | 'BL' | 'BR')[] = [];
+
+  // TL: P1 best response against Left (TL.p1 >= BL.p1) AND P2 best response against Top (TL.p2 >= TR.p2)
+  if (TL.p1 >= BL.p1 && TL.p2 >= TR.p2) nash.push('TL');
+  // TR: P1 best response against Right (TR.p1 >= BR.p1) AND P2 best response against Top (TR.p2 >= TL.p2)
+  if (TR.p1 >= BR.p1 && TR.p2 >= TL.p2) nash.push('TR');
+  // BL: P1 best response against Left (BL.p1 >= TL.p1) AND P2 best response against Bottom (BL.p2 >= BR.p2)
+  if (BL.p1 >= TL.p1 && BL.p2 >= BR.p2) nash.push('BL');
+  // BR: P1 best response against Right (BR.p1 >= TR.p1) AND P2 best response against Bottom (BR.p2 >= BL.p2)
+  if (BR.p1 >= TR.p1 && BR.p2 >= BL.p2) nash.push('BR');
+
+  // Prisoner's Dilemma Check:
+  // Both have strictly dominant strategies leading to a Nash equilibrium that yields strictly lower payoffs than mutual cooperation.
+  let isPrisonersDilemma = false;
+  if (p1Dominant !== 'None' && p2Dominant !== 'None' && nash.length === 1) {
+    const nashCell = nash[0];
+    const nashP1 = matrix[nashCell].p1;
+    const nashP2 = matrix[nashCell].p2;
+    // Check if there is another cell where BOTH players are strictly better off
+    const cells: ('TL' | 'TR' | 'BL' | 'BR')[] = ['TL', 'TR', 'BL', 'BR'];
+    const betterCell = cells.find(c => c !== nashCell && matrix[c].p1 > nashP1 && matrix[c].p2 > nashP2);
+    if (betterCell) {
+      isPrisonersDilemma = true;
+    }
+  }
+
+  const p1Name = p1Dominant === 'Top' ? p1ActionNames[0] : p1Dominant === 'Bottom' ? p1ActionNames[1] : 'None';
+  const p2Name = p2Dominant === 'Left' ? p2ActionNames[0] : p2Dominant === 'Right' ? p2ActionNames[1] : 'None';
+
+  const explanationEn = `Player 1 ${p1Dominant !== 'None' ? 'has a strictly dominant strategy: ' + p1Name : 'has NO dominant strategy'}. Player 2 ${p2Dominant !== 'None' ? 'has a strictly dominant strategy: ' + p2Name : 'has NO dominant strategy'}. Found ${nash.length} pure Nash Equilibrium: [${nash.join(', ')}]. ${isPrisonersDilemma ? "Classic Prisoner's Dilemma detected: non-cooperative Nash equilibrium yields lower collective payoff than mutual cooperation." : ''}`;
+  const explanationZh = `玩家 1（行玩家）${p1Dominant !== 'None' ? '具有严格占优策略：【' + p1Name + '】' : '无占优策略'}。玩家 2（列玩家）${p2Dominant !== 'None' ? '具有严格占优策略：【' + p2Name + '】' : '无占优策略'}。共找到 ${nash.length} 个纯策略纳什均衡：【${nash.join(', ')}】。${isPrisonersDilemma ? '检测到经典“囚徒困境”特征：非合作纳什均衡的整体收益严格劣于双方互信合谋的合作结果。' : ''}`;
+
+  return {
+    p1DominantStrategy: p1Dominant,
+    p2DominantStrategy: p2Dominant,
+    nashEquilibria: nash,
+    isPrisonersDilemma,
+    explanationEn,
+    explanationZh
+  };
+}
+
+/**
  * Generates points for a concave Production Possibilities Curve (PPC):
  * Y = B * (1 - (X/A)^power)^(1/power)
  */

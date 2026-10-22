@@ -365,7 +365,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 3.2 / LO 3.2.A (Graph and explain short-run cost curves: MC, ATC, AVC, AFC)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'cost-curves-short-run',
     examWeight: '22–25%',
     keywords: ['Marginal Cost', 'Average Total Cost', 'Average Variable Cost', 'AFC', 'Cost Curves'],
     keyTerms: [
@@ -398,7 +399,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 3.7 / LO 3.7.A & 3.7.B (Illustrate short-run and long-run adjustments in perfectly competitive markets)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'perfect-competition-side-by-side',
     examWeight: '22–25%',
     keywords: ['Perfect Competition', 'Side-by-Side', 'Mr DARP', 'Zero Economic Profit', 'Entry and Exit'],
     keyTerms: [
@@ -430,7 +432,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 3.6 / LO 3.6.A (Determine whether a firm produces in short run or shuts down)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'shutdown-rule',
     examWeight: '22–25%',
     keywords: ['Shutdown Rule', 'P < AVC', 'Firm Supply Curve', 'Fixed Cost'],
     keyTerms: [
@@ -464,7 +467,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 4.2 / LO 4.2.A (Graph a single-price monopoly, determine price and quantity, and identify deadweight loss)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'monopoly-single-price',
     examWeight: '15–22%',
     keywords: ['Monopoly', 'Market Power', 'MR < P', 'Deadweight Loss', 'Barriers to Entry'],
     keyTerms: [
@@ -498,7 +502,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 4.3 / LO 4.3.A (Analyze the welfare and output effects of perfect price discrimination)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'monopoly-price-discrimination',
     examWeight: '15–22%',
     keywords: ['Price Discrimination', 'Willingness to Pay', 'Allocative Efficiency', 'Surplus Transfer'],
     keyTerms: [
@@ -560,7 +565,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 4.5 / LO 4.5.A (Solve a payoff matrix to identify dominant strategies and Nash equilibria)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'oligopoly-game-theory',
     examWeight: '15–22%',
     keywords: ['Oligopoly', 'Game Theory', 'Nash Equilibrium', 'Dominant Strategy', 'Prisoner Dilemma'],
     keyTerms: [
