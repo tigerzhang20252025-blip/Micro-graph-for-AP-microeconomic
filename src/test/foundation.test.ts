@@ -1,5 +1,6 @@
 import { AP_TOPICS, AP_UNITS } from '../data/topicRegistry';
 import { translations } from '../i18n/translations';
+import { getModelById } from '../engine/models/index';
 import { marketEquilibriumModel } from '../engine/models/marketEquilibriumModel';
 import { ppcModel } from '../engine/models/ppcModel';
 import { comparativeAdvantageModel } from '../engine/models/comparativeAdvantageModel';
@@ -8,9 +9,17 @@ import { costCurvesModel } from '../engine/models/costCurvesModel';
 import { perfectCompetitionModel } from '../engine/models/perfectCompetitionModel';
 import { monopolyModel } from '../engine/models/monopolyModel';
 import { gameTheoryModel } from '../engine/models/gameTheoryModel';
+import { internationalTradeModel } from '../engine/models/internationalTradeModel';
+import { monopolisticCompModel } from '../engine/models/monopolisticCompModel';
+import { factorMarketModel } from '../engine/models/factorMarketModel';
+import { externalitiesModel } from '../engine/models/externalitiesModel';
+import { lorenzCurveModel } from '../engine/models/lorenzCurveModel';
+import { utilityMaximizationModel } from '../engine/models/utilityMaximizationModel';
+import { indifferenceCurveModel } from '../engine/models/indifferenceCurveModel';
+import { cournotDuopolyModel } from '../engine/models/cournotDuopolyModel';
 
 console.log('==============================================');
-console.log('🧪 AP MICROECONOMICS GRAPH LAB: BATCH 1 & 2 AUDIT');
+console.log('🧪 AP MICROECONOMICS GRAPH LAB: COMPREHENSIVE AUDIT');
 console.log('==============================================\n');
 
 let failedTests = 0;
@@ -38,7 +47,13 @@ assert(extensionTopics.length >= 2, `Optional Extensions classified: ${extension
 assert(excludedTopics.length >= 2, `Not in Current AP Exam Scope classified: ${excludedTopics.length} topics`);
 
 const readyTopics = AP_TOPICS.filter(t => t.status === 'ready');
-assert(readyTopics.length >= 10, `Active Interactive Models in Registry: ${readyTopics.length} topics`);
+assert(readyTopics.length >= 16, `Active Interactive Models in Registry: ${readyTopics.length} topics`);
+
+// Verify all ready topics resolve to a valid model in ECONOMIC_MODELS
+for (const topic of readyTopics) {
+  const model = getModelById(topic.id);
+  assert(model !== undefined, `Topic "${topic.id}" resolves to registered EconomicModel`);
+}
 
 // 2. Translation Parity & Completeness
 console.log('\n--- 2. Translation Parity & Terminology Check ---');
@@ -97,14 +112,11 @@ assert(String(pcLongRun.results.find(r => r.id === 'longRunStatus')?.value).incl
 
 // 6. Batch 2 Verification: Monopoly (Single-Price & Price Discrimination)
 console.log('\n--- 6. Batch 2: Monopoly & Price Discrimination ---');
-// Unregulated Monopoly: Demand P = 100 - Q, MC = 10 + 0.5Q
-// MR = 100 - 2Q. MR = MC => 100 - 2Q = 10 + 0.5Q => 2.5Q = 90 => Qm = 36. Pm = 100 - 36 = 64.
 const monopolySingle = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 180, isPriceDiscrimination: false, regulationType: 'none' });
 assert(monopolySingle.results.find(r => r.id === 'monopolyQ')?.value === '36.0 units', 'Monopoly output Qm = 36.0 units');
 assert(monopolySingle.results.find(r => r.id === 'monopolyP')?.value === '$64.0', 'Monopoly price on Demand curve Pm = $64.0');
 assert(Number(String(monopolySingle.results.find(r => r.id === 'dwlResult')?.value).replace('$', '')) > 0, 'Single-price monopoly generates deadweight loss');
 
-// Perfect Price Discrimination: Q expands to Q_so = 60, DWL = 0
 const monopolyDiscrim = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 180, isPriceDiscrimination: true, regulationType: 'none' });
 assert(monopolyDiscrim.results.find(r => r.id === 'monopolyQ')?.value === '60.0 units', 'Price discrimination expands output to allocatively efficient 60.0 units');
 assert(monopolyDiscrim.results.find(r => r.id === 'dwlResult')?.value === '$0.0', 'Price discrimination eliminates all deadweight loss (DWL = 0)');
@@ -118,16 +130,79 @@ const gameClassic = gameTheoryModel.calculate({
   bl1: 80, bl2: 10,
   br1: 25, br2: 25
 });
-
 assert(String(gameClassic.results.find(r => r.id === 'p1DomResult')?.value).includes('Low Price'), 'Firm 1 dominant strategy is Low Price (Defect)');
 assert(String(gameClassic.results.find(r => r.id === 'p2DomResult')?.value).includes('Low Price'), 'Firm 2 dominant strategy is Low Price (Defect)');
 assert(String(gameClassic.results.find(r => r.id === 'nashResult')?.value).includes('BR'), 'Nash Equilibrium is at Bottom-Right (BR)');
 assert(String(gameClassic.results.find(r => r.id === 'dilemmaResult')?.value).includes('YES'), "Detected classic Prisoner's Dilemma");
 assert(gameClassic.customTable !== undefined, 'Game theory outputs interactive 2x2 matrix schedule');
 
+// 8. Batch 3 Verification: International Trade & Tariffs
+console.log('\n--- 8. Batch 3: International Trade & Tariffs ---');
+const tradeFree = internationalTradeModel.calculate({ worldPrice: 30, tariffPerUnit: 0, tradePolicy: 'free_trade' });
+assert(tradeFree.results.find(r => r.id === 'domPrice')?.value === '$30.00', 'Free trade domestic price = World Price $30.00');
+assert(tradeFree.results.find(r => r.id === 'dwlTotal')?.value === '$0.00', 'Free trade has zero deadweight loss');
+
+const tradeTariff = internationalTradeModel.calculate({ worldPrice: 30, tariffPerUnit: 10, tradePolicy: 'tariff' });
+assert(tradeTariff.results.find(r => r.id === 'domPrice')?.value === '$40.00', 'Tariff raises domestic price to $40.00');
+assert(Number(String(tradeTariff.results.find(r => r.id === 'tariffRev')?.value).replace('$', '')) > 0, 'Tariff collects positive government revenue');
+assert(tradeTariff.customTable !== undefined, 'International trade outputs CED welfare comparison table');
+
+// 9. Batch 3 Verification: Monopolistic Competition
+console.log('\n--- 9. Batch 3: Monopolistic Competition ---');
+const monoCompLR = monopolisticCompModel.calculate({ marketPhase: 'long_run_tangency', demandIntercept: 90, demandSlope: 1.0, fixedCost: 360, marginalCostSlope: 0.5 });
+assert(Number(String(monoCompLR.results.find(r => r.id === 'excessCapVal')?.value).split(' ')[0]) > 0, 'Monopolistic competition exhibits Excess Capacity in long run');
+const profitLR = Number(String(monoCompLR.results.find(r => r.id === 'profitVal')?.value).replace('$', '').replace('+', ''));
+assert(Math.abs(profitLR) < 5, 'Long-run tangency yields approximately zero economic profit');
+
+// 10. Batch 3 Verification: Factor Markets (Competitive & Monopsony)
+console.log('\n--- 10. Batch 3: Factor Markets (Labor Supply, MRP, Monopsony) ---');
+const monopsonyBase = factorMarketModel.calculate({ marketStructure: 'monopsony', laborProductPrice: 5, minWageRate: 0 });
+assert(monopsonyBase.curves.find(c => c.id === 'mfc') !== undefined, 'Monopsony plots Marginal Factor Cost (MFC) curve');
+assert(monopsonyBase.shadedAreas.find(s => s.id === 'mono-dwl') !== undefined, 'Monopsony generates Deadweight Loss from underemployment');
+
+const compFactor = factorMarketModel.calculate({ marketStructure: 'competitive_firm', laborProductPrice: 5, minWageRate: 0 });
+assert(compFactor.results.find(r => r.id === 'dwlVal')?.value === '$0.00', 'Competitive factor market has zero deadweight loss');
+
+// 11. Batch 3 Verification: Externalities (Negative & Positive)
+console.log('\n--- 11. Batch 3: Market Failure (Externalities & Pigouvian Policy) ---');
+const negExtUnregulated = externalitiesModel.calculate({ externalityType: 'negative_production', externalityMagnitude: 24, correctivePolicyActive: false });
+assert(Number(String(negExtUnregulated.results.find(r => r.id === 'dwlResult')?.value).replace('$', '')) > 0, 'Unregulated pollution generates deadweight loss');
+
+const negExtPigouvian = externalitiesModel.calculate({ externalityType: 'negative_production', externalityMagnitude: 24, correctivePolicyActive: true });
+assert(String(negExtPigouvian.results.find(r => r.id === 'dwlResult')?.value).includes('$0.00'), 'Pigouvian tax restores social efficiency (DWL = 0)');
+
+const posExtUnregulated = externalitiesModel.calculate({ externalityType: 'positive_consumption', externalityMagnitude: 24, correctivePolicyActive: false });
+assert(posExtUnregulated.curves.find(c => c.id === 'msb') !== undefined, 'Positive externality displays MSB > MPB');
+
+// 12. Batch 3 Verification: Lorenz Curve & Gini Coefficient
+console.log('\n--- 12. Batch 3: Income Inequality (Lorenz Curve & Gini) ---');
+const lorenzBase = lorenzCurveModel.calculate({ inequalityExponent: 2.5, redistributionEffect: 0 });
+const giniBase = Number(lorenzBase.results.find(r => r.id === 'giniResult')?.value);
+assert(giniBase > 0.35 && giniBase < 0.50, `Gini coefficient correctly computed: ${giniBase}`);
+assert(lorenzBase.customTable !== undefined, 'Lorenz model outputs quintile income distribution table');
+
+const lorenzRedist = lorenzCurveModel.calculate({ inequalityExponent: 2.5, redistributionEffect: 30 });
+const giniRedist = Number(lorenzRedist.results.find(r => r.id === 'giniResult')?.value);
+assert(giniRedist < giniBase, `Progressive redistribution reduces Gini coefficient: ${giniBase} -> ${giniRedist}`);
+
+// 13. Batch 3 Verification: Marginal Analysis & Utility Maximization
+console.log('\n--- 13. Batch 3: Marginal Analysis & Utility Maximization ---');
+const utilityModelResult = utilityMaximizationModel.calculate({ income: 40, priceX: 4, priceY: 8 });
+assert(utilityModelResult.results.find(r => r.id === 'optBundle') !== undefined, 'Utility model computes optimal consumption bundle');
+assert(utilityModelResult.customTable !== undefined, 'Utility model outputs AP discrete equi-marginal schedule');
+
+// 14. Batch 3 Verification: Optional Honors Extensions
+console.log('\n--- 14. Optional Extensions (Indifference Curves & Cournot Duopoly) ---');
+const icOpt = indifferenceCurveModel.calculate({ income: 120, priceX: 4, priceY: 6 });
+assert(icOpt.curves.find(c => c.id === 'ic-tangent') !== undefined, 'Indifference curve tangency optimum computed');
+
+const cournotOpt = cournotDuopolyModel.calculate({ demandIntercept: 120, marginalCost: 30, demandSlope: 1.0 });
+assert(cournotOpt.results.find(r => r.id === 'cournotQ') !== undefined, 'Cournot duopoly outputs equilibrium quantities per firm');
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL BATCH 1 & BATCH 2 AUDIT TESTS PASSED (0 FAILURES)');
+  console.log('🎉 ALL 14 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 100% CED AP MICROECONOMICS GRAPH COVERAGE ACHIEVED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);

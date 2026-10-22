@@ -161,7 +161,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 1.6 / LO 1.6.A (Calculate utility-maximizing consumer choices using marginal analysis)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'marginal-analysis-utility',
     examWeight: '12–15%',
     keywords: ['Marginal Utility', 'Diminishing Marginal Utility', 'Utility Maximization', 'Budget Constraint'],
     keyTerms: [
@@ -328,7 +329,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 2.9 / LO 2.9.A (Explain effects of tariffs and trade barriers on surplus and efficiency)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'international-trade-tariffs',
     examWeight: '20–25%',
     keywords: ['International Trade', 'World Price', 'Tariff', 'Quota', 'Import Protection'],
     keyTerms: [
@@ -533,7 +535,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 4.4 / LO 4.4.A (Illustrate short-run and long-run equilibrium and excess capacity in monopolistic competition)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'monopolistic-competition',
     examWeight: '15–22%',
     keywords: ['Monopolistic Competition', 'Excess Capacity', 'Tangency', 'Product Differentiation'],
     keyTerms: [
@@ -600,7 +603,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 5.3 / LO 5.3.A (Determine the profit-maximizing quantity of labor hired by a competitive firm)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'factor-market-competitive',
     examWeight: '10–13%',
     keywords: ['Factor Market', 'MRP', 'MFC', 'MRC', 'Derived Demand', 'Labor Market'],
     keyTerms: [
@@ -632,7 +636,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 5.4 / LO 5.4.A (Graph a monopsonistic labor market and determine wage and employment)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'monopsony-factor-market',
     examWeight: '10–13%',
     keywords: ['Monopsony', 'Labor Supply', 'MFC > S', 'Wage Exploitation', 'Underemployment'],
     keyTerms: [
@@ -668,7 +673,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 6.2 / LO 6.2.A (Graph negative externalities and calculate corrective per-unit taxes)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'negative-externalities',
     examWeight: '8–12%',
     keywords: ['Negative Externality', 'MSC', 'MPC', 'Pigouvian Tax', 'Deadweight Loss', 'Pollution'],
     keyTerms: [
@@ -701,7 +707,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 6.2 / LO 6.2.A (Graph positive externalities and calculate corrective per-unit subsidies)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'positive-externalities',
     examWeight: '8–12%',
     keywords: ['Positive Externality', 'MSB', 'MPB', 'Pigouvian Subsidy', 'Underproduction'],
     keyTerms: [
@@ -733,7 +740,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 6.5 / LO 6.5.A (Interpret the Lorenz curve and explain changes in the Gini coefficient)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'lorenz-curve-gini',
     examWeight: '8–12%',
     keywords: ['Lorenz Curve', 'Gini Coefficient', 'Income Inequality', 'Redistribution'],
     keyTerms: [
@@ -768,7 +776,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'extension',
     officialRef: 'Advanced Microeconomics Extension (Beyond standard AP Micro CED; frequently taught in honors economics)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'indifference-curves-budget',
     keywords: ['Indifference Curve', 'Budget Constraint', 'MRS', 'Income Effect', 'Substitution Effect'],
     keyTerms: [
       { en: 'Indifference Curve', zh: '无差异曲线' },
@@ -798,7 +807,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'extension',
     officialRef: 'Intermediate Microeconomics Extension (Oligopoly output competition model)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'cournot-duopoly',
     keywords: ['Cournot', 'Duopoly', 'Reaction Curve', 'Best Response', 'Simultaneous Game'],
     keyTerms: [
       { en: 'Reaction Curve (Best Response)', zh: '反应曲线（最佳应对函数）' },
