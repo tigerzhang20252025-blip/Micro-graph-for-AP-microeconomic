@@ -6,7 +6,8 @@ import { AP_TOPICS } from '../../data/topicRegistry';
 import { GraphContainer } from './GraphContainer';
 import { GraphControls } from './GraphControls';
 import { GraphResults } from './GraphResults';
-import { ArrowLeft, Lightbulb, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Lightbulb, GraduationCap, Sparkles } from 'lucide-react';
+import { LEARNING_ACTIVITIES } from '../../data/learningActivities';
 
 export const GraphWorkspace: React.FC = () => {
   const {
@@ -16,13 +17,17 @@ export const GraphWorkspace: React.FC = () => {
     updateModelParam,
     setModelParams,
     resetModelParams,
-    setCurrentView
+    setCurrentView,
+    setActiveLearningActivityId
   } = useAppState();
 
-  const { t, tr } = useLanguage();
+  const { language, t, tr } = useLanguage();
 
   const model = getModelById(selectedModelId) || getModelById('market-equilibrium-welfare')!;
   const currentTopic = AP_TOPICS.find((top) => top.id === selectedTopicId || top.graphModelId === model.id);
+  const matchingActivity = LEARNING_ACTIVITIES.find(
+    (a) => a.modelId === model.id || (currentTopic && a.topicId === currentTopic.id)
+  );
 
   const activeParams = modelParams[model.id] || model.defaultParams;
 
@@ -46,13 +51,28 @@ export const GraphWorkspace: React.FC = () => {
       {/* Top Breadcrumb & Title Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <button
-            onClick={() => setCurrentView('library')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 px-3 py-1.5 rounded-xl transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>{t.backToLibrary}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentView('library')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/70 hover:bg-blue-100/70 px-3 py-1.5 rounded-xl transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{t.backToLibrary}</span>
+            </button>
+
+            {matchingActivity && (
+              <button
+                onClick={() => {
+                  setActiveLearningActivityId(matchingActivity.id);
+                  setCurrentView('learning');
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{language === 'zh' ? '前往本考点预测挑战' : 'Try Prediction Challenge'}</span>
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {currentTopic && (

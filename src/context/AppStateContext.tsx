@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AP_TOPICS } from '../data/topicRegistry';
 
-export type AppView = 'library' | 'graph' | 'practice' | 'reference';
+export type AppView = 'library' | 'graph' | 'learning' | 'practice' | 'reference';
 export type AppMode = 'learning' | 'practice' | 'reference';
 
 interface AppStateContextType {
@@ -13,6 +13,10 @@ interface AppStateContextType {
   setSelectedModelId: (modelId: string) => void;
   activeMode: AppMode;
   setActiveMode: (mode: AppMode) => void;
+
+  // Active learning challenge
+  activeLearningActivityId: string;
+  setActiveLearningActivityId: (id: string) => void;
   
   // Model parameters preserved across language and view switching
   modelParams: Record<string, Record<string, any>>;
@@ -40,6 +44,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [selectedTopicId, setSelectedTopicId] = useState<string>('market-equilibrium-welfare');
   const [selectedModelId, setSelectedModelId] = useState<string>('market-equilibrium-welfare');
   const [activeMode, setActiveMode] = useState<AppMode>('learning');
+  const [activeLearningActivityId, setActiveLearningActivityId] = useState<string>('learn-ppc-capital-growth');
 
   const [modelParams, setModelParamsState] = useState<Record<string, Record<string, any>>>({});
 
@@ -108,6 +113,8 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     setSelectedModelId,
     activeMode,
     setActiveMode,
+    activeLearningActivityId,
+    setActiveLearningActivityId,
     modelParams,
     updateModelParam,
     setModelParams,

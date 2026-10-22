@@ -1,6 +1,9 @@
 import { AP_TOPICS, AP_UNITS } from '../data/topicRegistry';
 import { translations } from '../i18n/translations';
 import { getModelById } from '../engine/models/index';
+import { LEARNING_ACTIVITIES } from '../data/learningActivities';
+import { PRACTICE_QUESTIONS } from '../data/practiceQuestions';
+import { AP_DECISION_RULES, AP_EXAM_MISTAKES, AP_FORMULAS } from '../data/referenceContent';
 import { marketEquilibriumModel } from '../engine/models/marketEquilibriumModel';
 import { ppcModel } from '../engine/models/ppcModel';
 import { comparativeAdvantageModel } from '../engine/models/comparativeAdvantageModel';
@@ -199,10 +202,71 @@ assert(icOpt.curves.find(c => c.id === 'ic-tangent') !== undefined, 'Indifferenc
 const cournotOpt = cournotDuopolyModel.calculate({ demandIntercept: 120, marginalCost: 30, demandSlope: 1.0 });
 assert(cournotOpt.results.find(r => r.id === 'cournotQ') !== undefined, 'Cournot duopoly outputs equilibrium quantities per firm');
 
+// 15. Learning Mode & Prediction Activities Audit
+console.log('\n--- 15. Learning Mode: Prediction-First Activities Audit ---');
+assert(LEARNING_ACTIVITIES.length >= 7, `Learning activities registered: ${LEARNING_ACTIVITIES.length} (>= 7)`);
+
+for (const act of LEARNING_ACTIVITIES) {
+  assert(act.id.length > 0, `Activity "${act.id}" has valid ID`);
+  assert(act.unit >= 1 && act.unit <= 6, `Activity "${act.id}" assigned to valid AP unit ${act.unit}`);
+  assert(act.title.en.length > 0 && act.title.zh.length > 0, `Activity "${act.id}" has bilingual title`);
+  assert(act.scenario.en.length > 0 && act.scenario.zh.length > 0, `Activity "${act.id}" has bilingual scenario`);
+  assert(act.options.length >= 3, `Activity "${act.id}" has at least 3 prediction options`);
+  
+  const correctOptions = act.options.filter(o => o.isCorrect);
+  assert(correctOptions.length === 1, `Activity "${act.id}" has exactly ONE correct prediction option`);
+
+  // Verify connection to real economic model
+  const model = getModelById(act.modelId);
+  assert(model !== undefined, `Activity "${act.id}" links to valid registered EconomicModel "${act.modelId}"`);
+
+  if (model) {
+    const initCalc = model.calculate(act.graphInitialParams);
+    assert(initCalc.curves.length > 0, `Activity "${act.id}" initial params calculate valid curves`);
+    const targetCalc = model.calculate(act.graphTargetParams);
+    assert(targetCalc.curves.length > 0, `Activity "${act.id}" target params calculate valid curves`);
+  }
+}
+
+// 16. AP-Style Practice Questions Audit
+console.log('\n--- 16. Practice Mode: AP-Style Questions & Distractor Audit ---');
+assert(PRACTICE_QUESTIONS.length >= 10, `Practice question bank size: ${PRACTICE_QUESTIONS.length} questions (>= 10)`);
+
+// Check unit coverage across all 6 AP units
+for (let u = 1; u <= 6; u++) {
+  const unitQs = PRACTICE_QUESTIONS.filter(q => q.unit === u);
+  assert(unitQs.length >= 1, `AP Unit ${u} has at least 1 verified practice question (${unitQs.length} found)`);
+}
+
+for (const q of PRACTICE_QUESTIONS) {
+  assert(q.prompt.en.length > 0 && q.prompt.zh.length > 0, `Question "${q.id}" has bilingual prompt`);
+  assert(q.options.length === 4, `Question "${q.id}" has standard AP 4 options (A, B, C, D)`);
+  const correctOpt = q.options.find(o => o.id === q.correctOptionId);
+  assert(correctOpt !== undefined, `Question "${q.id}" correctOptionId "${q.correctOptionId}" matches an option`);
+  assert(q.overallExplanation.en.length > 0 && q.overallExplanation.zh.length > 0, `Question "${q.id}" has bilingual explanation`);
+  
+  // Verify topicId resolves in AP_TOPICS
+  const linkedTopic = AP_TOPICS.find(t => t.id === q.topicId);
+  assert(linkedTopic !== undefined, `Question "${q.id}" links to valid registered topic "${q.topicId}"`);
+}
+
+// 17. Reference Mode Content Audit
+console.log('\n--- 17. Reference Mode: Rules, Traps & Formulas Audit ---');
+assert(AP_DECISION_RULES.length >= 4, `Core AP decision rules registered: ${AP_DECISION_RULES.length}`);
+assert(AP_EXAM_MISTAKES.length >= 4, `Top AP exam traps registered: ${AP_EXAM_MISTAKES.length}`);
+assert(AP_FORMULAS.length >= 3, `Essential AP formulas registered: ${AP_FORMULAS.length}`);
+
+for (const rule of AP_DECISION_RULES) {
+  assert(rule.condition.length > 0, `Rule "${rule.id}" specifies mathematical condition`);
+}
+for (const mistake of AP_EXAM_MISTAKES) {
+  assert(mistake.wrongThinking.en.length > 0 && mistake.correctThinking.en.length > 0, `Mistake "${mistake.id}" has wrong vs correct comparison`);
+}
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 14 AUDIT SUITES PASSED WITH 0 FAILURES!');
-  console.log('💎 100% CED AP MICROECONOMICS GRAPH COVERAGE ACHIEVED!');
+  console.log('🎉 ALL 17 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 COMPLETE AP MICROECONOMICS LEARNING LAB VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);

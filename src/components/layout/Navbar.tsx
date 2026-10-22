@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState, AppView } from '../../context/AppStateContext';
-import { LineChart, BookOpen, BrainCircuit, Globe, Menu, X, ShieldCheck } from 'lucide-react';
+import { LineChart, BookOpen, BrainCircuit, Globe, Menu, X, ShieldCheck, Sparkles } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { language, toggleLanguage, t } = useLanguage();
@@ -18,6 +18,11 @@ export const Navbar: React.FC = () => {
       view: 'graph',
       label: t.navGraphLab,
       icon: <LineChart className="w-4 h-4" />
+    },
+    {
+      view: 'learning',
+      label: t.navLearningMode,
+      icon: <Sparkles className="w-4 h-4" />
     },
     {
       view: 'practice',

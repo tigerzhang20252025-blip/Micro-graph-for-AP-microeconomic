@@ -5,8 +5,9 @@ import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { TopicLibrary } from './components/registry/TopicLibrary';
 import { GraphWorkspace } from './components/graph/GraphWorkspace';
-import { PracticeModeShell } from './components/modes/PracticeModeShell';
-import { ReferenceModeShell } from './components/modes/ReferenceModeShell';
+import { LearningMode } from './components/modes/LearningMode';
+import { PracticeMode } from './components/modes/PracticeMode';
+import { ReferenceMode } from './components/modes/ReferenceMode';
 
 const MainContent: React.FC = () => {
   const { currentView } = useAppState();
@@ -15,8 +16,9 @@ const MainContent: React.FC = () => {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {currentView === 'library' && <TopicLibrary />}
       {currentView === 'graph' && <GraphWorkspace />}
-      {currentView === 'practice' && <PracticeModeShell />}
-      {currentView === 'reference' && <ReferenceModeShell />}
+      {currentView === 'learning' && <LearningMode />}
+      {currentView === 'practice' && <PracticeMode />}
+      {currentView === 'reference' && <ReferenceMode />}
     </main>
   );
 };
