@@ -130,7 +130,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 1.4 / LO 1.4.A (Calculate comparative advantage and identify mutually beneficial terms of trade)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'comparative-advantage',
     examWeight: '12–15%',
     keywords: ['Comparative Advantage', 'Terms of Trade', 'Absolute Advantage', 'Specialization'],
     keyTerms: [
@@ -228,7 +229,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 2.3 / LO 2.3.A (Calculate PED and relate it to the Total Revenue Test)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'price-elasticity-demand',
     examWeight: '20–25%',
     keywords: ['Elasticity', 'PED', 'Total Revenue Test', 'Elastic', 'Inelastic'],
     keyTerms: [
@@ -292,7 +294,8 @@ export const AP_TOPICS: APTopic[] = [
     },
     scope: 'core',
     officialRef: 'CED Topic 2.8 / LO 2.8.A (Analyze the market effects of binding price ceilings and floors)',
-    status: 'planned',
+    status: 'ready',
+    graphModelId: 'price-controls-ceilings-floors',
     examWeight: '20–25%',
     keywords: ['Price Ceiling', 'Price Floor', 'Shortage', 'Surplus', 'Binding Control'],
     keyTerms: [

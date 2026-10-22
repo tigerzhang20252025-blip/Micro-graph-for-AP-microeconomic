@@ -1,11 +1,17 @@
 import { EconomicModel } from '../../types/graph';
 import { marketEquilibriumModel } from './marketEquilibriumModel';
 import { ppcModel } from './ppcModel';
+import { comparativeAdvantageModel } from './comparativeAdvantageModel';
+import { elasticityModel } from './elasticityModel';
 
 export const ECONOMIC_MODELS: Record<string, EconomicModel> = {
-  'market-equilibrium-welfare': marketEquilibriumModel,
+  // Batch 1: Basic Economic Concepts & Core Supply and Demand
   'ppc-model': ppcModel,
-  // Additional models in Part 2 will be registered here (Monopoly, Oligopoly, Factor Markets, Externalities, etc.)
+  'comparative-advantage': comparativeAdvantageModel,
+  'market-equilibrium-welfare': marketEquilibriumModel,
+  'price-elasticity-demand': elasticityModel,
+  'gov-intervention-taxes-deadweight': marketEquilibriumModel,
+  'price-controls-ceilings-floors': marketEquilibriumModel,
 };
 
 export function getModelById(modelId: string): EconomicModel | undefined {

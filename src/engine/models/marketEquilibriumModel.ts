@@ -1,116 +1,171 @@
-import { EconomicModel, GraphCalculationOutput, ScenarioPreset, CurveSpec } from '../../types/graph';
+import { EconomicModel, GraphCalculationOutput, ScenarioPreset, CurveSpec, KeyPointSpec, ShadedAreaSpec } from '../../types/graph';
 import {
   evaluateLinearPrice,
   findLinearIntersection,
   generateLinearPoints,
-  calculatePointElasticity
+  calculatePointElasticity,
+  analyzeSimultaneousShifts
 } from '../economicMath';
 
 export interface MarketEquilibriumParams {
-  demandShift: number; // -30 to +30
-  supplyShift: number; // -30 to +30
-  taxPerUnit: number;  // 0 to 20
+  demandShift: number;     // -30 to +30
+  supplyShift: number;     // -30 to +30 (positive = supply right/increase)
+  taxPerUnit: number;      // 0 to 24
+  subsidyPerUnit: number;  // 0 to 20
   priceControlMode: 'none' | 'ceiling' | 'floor';
-  controlledPrice: number; // 10 to 90
+  controlledPrice: number; // 15 to 85
+  showBaselineComparison: boolean;
 }
 
 const defaultParams: MarketEquilibriumParams = {
   demandShift: 0,
   supplyShift: 0,
   taxPerUnit: 0,
+  subsidyPerUnit: 0,
   priceControlMode: 'none',
-  controlledPrice: 40
+  controlledPrice: 40,
+  showBaselineComparison: false
 };
 
 const presets: ScenarioPreset[] = [
   {
     id: 'baseline',
     name: {
-      en: 'Competitive Market Baseline',
-      zh: '完全竞争市场基准'
+      en: 'Competitive Market Baseline (MB = MC)',
+      zh: '完全竞争市场基准（MB = MC）'
     },
     description: {
-      en: 'Equilibrium where Qs = Qd. Allocative efficiency is achieved; CS and PS are maximized with zero deadweight loss.',
-      zh: 'Qs = Qd 的供求均衡基准点。实现配置效率，社会总剩余最大化，无谓损失为零。'
+      en: 'Competitive equilibrium with Qs = Qd. Allocative efficiency is achieved; CS and PS are maximized with zero deadweight loss.',
+      zh: '完全竞争基准点（Qs = Qd）。达到配置效率（MB = MC），消费者与生产者剩余最大化，无谓损失为零。'
     },
     params: {
       demandShift: 0,
       supplyShift: 0,
       taxPerUnit: 0,
+      subsidyPerUnit: 0,
       priceControlMode: 'none',
-      controlledPrice: 50
+      controlledPrice: 50,
+      showBaselineComparison: false
+    }
+  },
+  {
+    id: 'simultaneous-d-up-s-up',
+    name: {
+      en: 'Simultaneous Shift: D ↑ & S ↑ (Q ↑, P Indeterminate)',
+      zh: '双重移动：D ↑ 与 S ↑（Q 确定增加，P 不确定）'
+    },
+    description: {
+      en: 'Both demand and supply shift rightward. Quantity unequivocally increases, while the effect on price depends on which shift is larger.',
+      zh: '供求双方同时增加（右移）。均衡数量必然增加，而均衡价格的涨跌取决于需求与供给平移相对幅度。'
+    },
+    params: {
+      demandShift: 20,
+      supplyShift: 20,
+      taxPerUnit: 0,
+      subsidyPerUnit: 0,
+      priceControlMode: 'none',
+      controlledPrice: 50,
+      showBaselineComparison: true
+    }
+  },
+  {
+    id: 'simultaneous-d-up-s-down',
+    name: {
+      en: 'Simultaneous Shift: D ↑ & S ↓ (P ↑, Q Indeterminate)',
+      zh: '双重移动：D ↑ 与 S ↓（P 确定上涨，Q 不确定）'
+    },
+    description: {
+      en: 'Demand increases while supply decreases. Price unequivocally rises, while the effect on quantity is indeterminate.',
+      zh: '需求增加而供给减少。均衡价格必然上涨，而均衡数量的增减取决于哪一方的变动占主导。'
+    },
+    params: {
+      demandShift: 20,
+      supplyShift: -20,
+      taxPerUnit: 0,
+      subsidyPerUnit: 0,
+      priceControlMode: 'none',
+      controlledPrice: 50,
+      showBaselineComparison: true
     }
   },
   {
     id: 'excise-tax',
     name: {
-      en: 'Excise Tax & Deadweight Loss',
-      zh: '消费税与无谓损失（DWL）'
+      en: 'Excise Tax Wedge & Deadweight Loss',
+      zh: '从量消费税楔子与无谓损失（DWL）'
     },
     description: {
-      en: 'A per-unit excise tax drives a wedge between buyer price (Pb) and seller price (Ps), creating tax revenue and DWL.',
-      zh: '征收单位消费税在买价（Pb）与卖价（Ps）之间形成税收楔子，带来政府财政收入并产生社会净福利损失（DWL）。'
+      en: 'A per-unit tax drives a wedge between buyer price (Pb) and seller price (Ps), generating tax revenue and deadweight loss.',
+      zh: '征收每单位从量消费税在买方价格（Pb）与卖方价格（Ps）之间形成税收楔子，减少交易量并产生社会福利无谓损失。'
     },
     params: {
       demandShift: 0,
       supplyShift: 0,
       taxPerUnit: 16,
+      subsidyPerUnit: 0,
       priceControlMode: 'none',
-      controlledPrice: 50
+      controlledPrice: 50,
+      showBaselineComparison: false
+    }
+  },
+  {
+    id: 'per-unit-subsidy',
+    name: {
+      en: 'Per-Unit Production Subsidy (Overproduction DWL)',
+      zh: '单位生产补贴（过度生产导致的 DWL）'
+    },
+    description: {
+      en: 'Government pays producers a per-unit subsidy, shifting effective supply down. Output expands beyond efficient Q*, creating deadweight loss.',
+      zh: '政府向生产商发放单位补贴，使有效供给下移。产量扩张至社会有效水平以上，财政支出超过社会剩余增量从而产生无谓损失。'
+    },
+    params: {
+      demandShift: 0,
+      supplyShift: 0,
+      taxPerUnit: 0,
+      subsidyPerUnit: 14,
+      priceControlMode: 'none',
+      controlledPrice: 50,
+      showBaselineComparison: false
     }
   },
   {
     id: 'price-ceiling',
     name: {
-      en: 'Binding Price Ceiling (Shortage)',
-      zh: '有约束力的价格上限（短缺）'
+      en: 'Binding Price Ceiling (Rent Control Shortage)',
+      zh: '有约束力的价格上限（房租管制短缺）'
     },
     description: {
-      en: 'A legal maximum price set below equilibrium price (e.g. rent control), leading to excess demand (shortage) and DWL.',
-      zh: '设定低于均衡价格的法定最高限价（如房租管制），导致需求量大于供给量（短缺）并伴随无谓损失。'
+      en: 'A legal maximum price set below equilibrium price, leading to persistent shortage (Qd > Qs) and deadweight loss.',
+      zh: '设定低于均衡价格的法定最高限价，导致需求量大于供给量形成持久短缺，并导致部分互利交易无法达成。'
     },
     params: {
       demandShift: 0,
       supplyShift: 0,
       taxPerUnit: 0,
+      subsidyPerUnit: 0,
       priceControlMode: 'ceiling',
-      controlledPrice: 35
+      controlledPrice: 35,
+      showBaselineComparison: false
     }
   },
   {
     id: 'price-floor',
     name: {
-      en: 'Binding Price Floor (Surplus)',
-      zh: '有约束力的价格下限（过剩）'
+      en: 'Binding Price Floor (Agricultural Surplus)',
+      zh: '有约束力的价格下限（农产品保护价过剩）'
     },
     description: {
-      en: 'A legal minimum price set above equilibrium price (e.g. agricultural price supports), causing excess supply (surplus) and DWL.',
-      zh: '设定高于均衡价格的法定最低限价（如农产品保护价），导致供给量大于需求量（产品过剩）及无谓损失。'
+      en: 'A legal minimum price set above equilibrium price, creating excess supply (surplus) and deadweight loss.',
+      zh: '设定高于均衡价格的法定最低限价，导致供给量大于需求量形成产品积压过剩及无谓损失。'
     },
     params: {
       demandShift: 0,
       supplyShift: 0,
       taxPerUnit: 0,
+      subsidyPerUnit: 0,
       priceControlMode: 'floor',
-      controlledPrice: 65
-    }
-  },
-  {
-    id: 'demand-increase',
-    name: {
-      en: 'Demand Increase (Shift Right)',
-      zh: '需求增加（右移）'
-    },
-    description: {
-      en: 'A favorable change in consumer tastes or income shifts demand rightward, raising both equilibrium price and quantity.',
-      zh: '消费者偏好提升或收入增加驱动需求曲线整体右移，促使均衡价格与均衡数量同步上升。'
-    },
-    params: {
-      demandShift: 18,
-      supplyShift: 0,
-      taxPerUnit: 0,
-      priceControlMode: 'none',
-      controlledPrice: 50
+      controlledPrice: 65,
+      showBaselineComparison: false
     }
   }
 ];
@@ -123,8 +178,8 @@ export const marketEquilibriumModel: EconomicModel = {
     zh: '供求均衡、社会福利与市场干预'
   },
   description: {
-    en: 'Interactive model of competitive equilibrium, surplus distribution, per-unit excise taxes, and price controls.',
-    zh: '完全竞争均衡、经济剩余分配、单位消费税及价格管制的交互仿真模型。'
+    en: 'Interactive model of competitive equilibrium, simultaneous shifts, elasticity, excise taxes, subsidies, and price controls.',
+    zh: '完全竞争均衡、供求双重平移、弹性、单位消费税、生产补贴以及价格管制的完整仿真模型。'
   },
   defaultParams,
   presets,
@@ -141,8 +196,8 @@ export const marketEquilibriumModel: EconomicModel = {
       step: 2,
       unit: '',
       help: {
-        en: 'Positive shifts demand rightward (increase in demand); negative shifts leftward.',
-        zh: '正值表示需求增加（曲线右移）；负值表示需求减少（曲线左移）。'
+        en: 'Positive = increase in demand (right); Negative = decrease in demand (left).',
+        zh: '正值代表需求增加（右移）；负值代表需求减少（左移）。'
       }
     },
     {
@@ -157,15 +212,15 @@ export const marketEquilibriumModel: EconomicModel = {
       step: 2,
       unit: '',
       help: {
-        en: 'Positive shifts supply rightward (increase in supply); negative shifts leftward.',
-        zh: '正值表示供给增加（曲线右移）；负值表示供给减少（曲线左移）。'
+        en: 'Positive = increase in supply (right); Negative = decrease in supply (left).',
+        zh: '正值代表供给增加（右移）；负值代表供给减少（左移）。'
       }
     },
     {
       type: 'slider',
       id: 'taxPerUnit',
       label: {
-        en: 'Excise Tax per Unit ($/unit)',
+        en: 'Per-Unit Excise Tax ($/unit)',
         zh: '单位从量消费税（$/单位）'
       },
       min: 0,
@@ -173,8 +228,24 @@ export const marketEquilibriumModel: EconomicModel = {
       step: 1,
       unit: '$',
       help: {
-        en: 'Per-unit tax placed on production/consumption, shifting effective supply upward.',
-        zh: '对商品征收的单位从量税，使有效供给曲线垂直向上平移。'
+        en: 'Per-unit tax driving a wedge between buyer and seller prices.',
+        zh: '政府征收的单位从量税，使买方支付价格与卖方获得价格分离。'
+      }
+    },
+    {
+      type: 'slider',
+      id: 'subsidyPerUnit',
+      label: {
+        en: 'Per-Unit Production Subsidy ($/unit)',
+        zh: '单位生产补贴（$/单位）'
+      },
+      min: 0,
+      max: 20,
+      step: 1,
+      unit: '$',
+      help: {
+        en: 'Per-unit subsidy lowering effective production cost and expanding output.',
+        zh: '政府向生产者发放的单位补贴，降低有效成本并扩大产出。'
       }
     },
     {
@@ -202,44 +273,70 @@ export const marketEquilibriumModel: EconomicModel = {
       step: 1,
       unit: '$',
       help: {
-        en: 'Active when Price Ceiling or Price Floor is selected above.',
-        zh: '当上方选择了价格上限或下限时生效。'
+        en: 'Active when Price Ceiling or Price Floor is selected.',
+        zh: '在选择价格上限或下限时生效。'
+      }
+    },
+    {
+      type: 'toggle',
+      id: 'showBaselineComparison',
+      label: {
+        en: 'Show Baseline Comparison (Original E₀)',
+        zh: '显示初始基准对比（原均衡点 E₀）'
+      },
+      help: {
+        en: 'Overlays original equilibrium curves to clearly show before-and-after shifts.',
+        zh: '叠加显示初始基准曲线，清晰对比平移前后的变动。'
       }
     }
   ],
   calculate(rawParams: Record<string, any>): GraphCalculationOutput {
     const params: MarketEquilibriumParams = { ...defaultParams, ...rawParams };
 
-    // Base Linear Equations:
-    // Demand: P = a - b * Q  (Base: P = 90 - 0.8 * Q)
-    // Supply: P = c + d * Q  (Base: P = 10 + 0.8 * Q)
-    const demandIntercept = 90 + params.demandShift;
+    // Linear Model Specifications:
+    // Base Demand: P = 90 - 0.8 * Q  (Intercept: 90, slope: -0.8)
+    // Base Supply: P = 10 + 0.8 * Q  (Intercept: 10, slope: 0.8)
+    const baseDemandIntercept = 90;
+    const baseSupplyIntercept = 10;
     const demandSlope = -0.8;
-
-    const supplyIntercept = 10 - params.supplyShift;
     const supplySlope = 0.8;
 
-    // Free market equilibrium (before tax)
-    const freeMarketInter = findLinearIntersection(
+    // Shifted intercepts:
+    const demandIntercept = baseDemandIntercept + params.demandShift;
+    const supplyIntercept = baseSupplyIntercept - params.supplyShift; // Note: positive supplyShift means curve shifts right / down
+
+    // Baseline Free Market Equilibrium (without current shift/tax/subsidy)
+    const baseInter = findLinearIntersection(
+      { intercept: baseDemandIntercept, slope: demandSlope },
+      { intercept: baseSupplyIntercept, slope: supplySlope }
+    );
+    const baseQ0 = baseInter ? baseInter.x : 50;
+    const baseP0 = baseInter ? baseInter.y : 50;
+
+    // Current Shifted Market Equilibrium (before tax/subsidy/controls)
+    const marketInter = findLinearIntersection(
       { intercept: demandIntercept, slope: demandSlope },
       { intercept: supplyIntercept, slope: supplySlope }
     );
+    const qStar = marketInter ? Math.max(0, marketInter.x) : 50;
+    const pStar = marketInter ? marketInter.y : 50;
 
-    const qStar = freeMarketInter ? Math.max(0, freeMarketInter.x) : 50;
-    const pStar = freeMarketInter ? freeMarketInter.y : 50;
+    // Tax or Subsidy effective intercept:
+    // If tax: effective supply shifts up by taxPerUnit
+    // If subsidy: effective supply shifts down by subsidyPerUnit
+    const netIntervention = params.taxPerUnit - params.subsidyPerUnit;
+    const effectiveSupplyIntercept = supplyIntercept + netIntervention;
 
-    // With excise tax: Supply curve shifts up by taxPerUnit
-    const effectiveSupplyIntercept = supplyIntercept + params.taxPerUnit;
-    const taxedInter = findLinearIntersection(
+    const postInterventionInter = findLinearIntersection(
       { intercept: demandIntercept, slope: demandSlope },
       { intercept: effectiveSupplyIntercept, slope: supplySlope }
     );
 
-    let actualQ = taxedInter ? Math.max(0, taxedInter.x) : qStar;
+    let actualQ = postInterventionInter ? Math.max(0, postInterventionInter.x) : qStar;
     let priceBuyer = evaluateLinearPrice({ intercept: demandIntercept, slope: demandSlope }, actualQ);
     let priceSeller = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
 
-    // Apply Price Controls if active
+    // Apply Price Controls if selected
     let isBindingControl = false;
     let shortageOrSurplus: 'shortage' | 'surplus' | null = null;
     let controlDiscrepancyAmount = 0;
@@ -247,11 +344,9 @@ export const marketEquilibriumModel: EconomicModel = {
     if (params.priceControlMode === 'ceiling') {
       if (params.controlledPrice < pStar) {
         isBindingControl = true;
-        // Ceiling binds below P*
-        // At ceiling: Qd = (Pceiling - a) / slopeD, Qs = (Pceiling - c) / slopeS
         const qDemandedAtCeiling = (params.controlledPrice - demandIntercept) / demandSlope;
         const qSuppliedAtCeiling = Math.max(0, (params.controlledPrice - supplyIntercept) / supplySlope);
-        actualQ = Math.min(qDemandedAtCeiling, qSuppliedAtCeiling); // voluntary exchange rule
+        actualQ = Math.min(qDemandedAtCeiling, qSuppliedAtCeiling); // short side of the market rule
         priceBuyer = params.controlledPrice;
         priceSeller = params.controlledPrice;
         shortageOrSurplus = 'shortage';
@@ -260,7 +355,6 @@ export const marketEquilibriumModel: EconomicModel = {
     } else if (params.priceControlMode === 'floor') {
       if (params.controlledPrice > pStar) {
         isBindingControl = true;
-        // Floor binds above P*
         const qDemandedAtFloor = Math.max(0, (params.controlledPrice - demandIntercept) / demandSlope);
         const qSuppliedAtFloor = (params.controlledPrice - supplyIntercept) / supplySlope;
         actualQ = Math.min(qDemandedAtFloor, qSuppliedAtFloor);
@@ -271,32 +365,40 @@ export const marketEquilibriumModel: EconomicModel = {
       }
     }
 
-    // Welfare Calculations
-    // CS = Area between Demand curve and priceBuyer up to actualQ
+    // Welfare Calculations:
     const cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
-    // PS = Area between priceSeller and Supply curve up to actualQ
     const ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
-    // Tax Revenue = taxPerUnit * actualQ
     const taxRevenue = params.taxPerUnit > 0 ? params.taxPerUnit * actualQ : 0;
-    // Deadweight Loss (DWL)
-    const deltaQ = Math.max(0, qStar - actualQ);
+    const subsidyExpense = params.subsidyPerUnit > 0 ? params.subsidyPerUnit * actualQ : 0;
+
     let dwl = 0;
     if (params.taxPerUnit > 0) {
+      // Underproduction DWL
+      const deltaQ = Math.max(0, qStar - actualQ);
       dwl = 0.5 * params.taxPerUnit * deltaQ;
+    } else if (params.subsidyPerUnit > 0) {
+      // Overproduction DWL
+      const deltaQ = Math.max(0, actualQ - qStar);
+      dwl = 0.5 * params.subsidyPerUnit * deltaQ;
     } else if (isBindingControl) {
-      // Area between Demand and Supply from actualQ to qStar
+      const deltaQ = Math.max(0, qStar - actualQ);
       const pDemandAtQ = evaluateLinearPrice({ intercept: demandIntercept, slope: demandSlope }, actualQ);
       const pSupplyAtQ = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
       dwl = 0.5 * Math.abs(pDemandAtQ - pSupplyAtQ) * deltaQ;
     }
-    const totalWelfare = cs + ps + taxRevenue;
 
-    // Elasticity at equilibrium
+    const totalWelfare = cs + ps + taxRevenue - subsidyExpense;
+
+    // Elasticity at market equilibrium
     const ped = calculatePointElasticity(demandSlope, pStar, qStar);
+    const pes = calculatePointElasticity(supplySlope, pStar, qStar);
+
+    // Simultaneous Shift Analysis
+    const shiftAnalysis = analyzeSimultaneousShifts(params.demandShift, params.supplyShift);
 
     // Generate Curve Points
-    const xMax = 110;
-    const yMax = 100;
+    const xMax = 120;
+    const yMax = 110;
 
     const demandPoints = generateLinearPoints(
       { intercept: demandIntercept, slope: demandSlope },
@@ -319,7 +421,7 @@ export const marketEquilibriumModel: EconomicModel = {
     const curves: CurveSpec[] = [
       {
         id: 'demand',
-        name: { en: 'Demand (D)', zh: '需求曲线（D）' },
+        name: { en: 'Demand Curve (D)', zh: '需求曲线（D）' },
         shortLabel: 'D',
         points: demandPoints,
         color: '#2563eb', // Blue
@@ -327,11 +429,11 @@ export const marketEquilibriumModel: EconomicModel = {
         strokeDasharray: 'none',
         visible: true,
         equation: `P = ${demandIntercept.toFixed(0)} - 0.8Q`,
-        endLabelPosition: 'end' as const
+        endLabelPosition: 'end'
       },
       {
         id: 'supply',
-        name: { en: 'Supply (S)', zh: '供给曲线（S）' },
+        name: { en: 'Supply Curve (S)', zh: '供给曲线（S）' },
         shortLabel: 'S',
         points: supplyPoints,
         color: '#dc2626', // Red
@@ -339,11 +441,41 @@ export const marketEquilibriumModel: EconomicModel = {
         strokeDasharray: 'none',
         visible: true,
         equation: `P = ${supplyIntercept.toFixed(0)} + 0.8Q`,
-        endLabelPosition: 'end' as const
+        endLabelPosition: 'end'
       }
     ];
 
-    // If tax is active, show the shifted supply curve
+    // Baseline Comparison Curves (if toggled)
+    if (params.showBaselineComparison && (params.demandShift !== 0 || params.supplyShift !== 0)) {
+      const baseDemandPts = generateLinearPoints({ intercept: baseDemandIntercept, slope: demandSlope }, 0, xMax, 25, 0, yMax);
+      const baseSupplyPts = generateLinearPoints({ intercept: baseSupplyIntercept, slope: supplySlope }, 0, xMax, 25, 0, yMax);
+      curves.unshift(
+        {
+          id: 'baseDemand',
+          name: { en: 'Initial Demand (D₀)', zh: '初始需求（D₀）' },
+          shortLabel: 'D₀',
+          points: baseDemandPts,
+          color: '#94a3b8',
+          strokeWidth: 2,
+          strokeDasharray: '4,4',
+          visible: true,
+          endLabelPosition: 'end'
+        },
+        {
+          id: 'baseSupply',
+          name: { en: 'Initial Supply (S₀)', zh: '初始供给（S₀）' },
+          shortLabel: 'S₀',
+          points: baseSupplyPts,
+          color: '#cbd5e1',
+          strokeWidth: 2,
+          strokeDasharray: '4,4',
+          visible: true,
+          endLabelPosition: 'end'
+        }
+      );
+    }
+
+    // Excise Tax Shifted Curve
     if (params.taxPerUnit > 0) {
       const taxedSupplyPoints = generateLinearPoints(
         { intercept: effectiveSupplyIntercept, slope: supplySlope },
@@ -363,11 +495,35 @@ export const marketEquilibriumModel: EconomicModel = {
         strokeDasharray: '5,4',
         visible: true,
         equation: `P = ${effectiveSupplyIntercept.toFixed(0)} + 0.8Q`,
-        endLabelPosition: 'end' as const
+        endLabelPosition: 'end'
       });
     }
 
-    // If price control is active, show horizontal controlled price line
+    // Subsidy Shifted Curve
+    if (params.subsidyPerUnit > 0) {
+      const subsidizedSupplyPoints = generateLinearPoints(
+        { intercept: effectiveSupplyIntercept, slope: supplySlope },
+        0,
+        xMax,
+        25,
+        0,
+        yMax
+      );
+      curves.push({
+        id: 'supplySubsidy',
+        name: { en: `Supply - Subsidy ($${params.subsidyPerUnit})`, zh: `含补贴供给曲线（-${params.subsidyPerUnit}）` },
+        shortLabel: 'S - Subsidy',
+        points: subsidizedSupplyPoints,
+        color: '#0891b2', // Cyan
+        strokeWidth: 2.5,
+        strokeDasharray: '5,4',
+        visible: true,
+        equation: `P = ${effectiveSupplyIntercept.toFixed(0)} + 0.8Q`,
+        endLabelPosition: 'end'
+      });
+    }
+
+    // Price Control Line
     if (params.priceControlMode !== 'none') {
       curves.push({
         id: 'controlLine',
@@ -384,16 +540,16 @@ export const marketEquilibriumModel: EconomicModel = {
         strokeWidth: 2,
         strokeDasharray: '6,3',
         visible: true,
-        endLabelPosition: 'end' as const
+        endLabelPosition: 'end'
       });
     }
 
-    // Points of interest
-    const points = [
+    // Key Coordinate Points
+    const points: KeyPointSpec[] = [
       {
-        id: 'eqFree',
-        label: { en: 'Free Market Equilibrium (E₀)', zh: '自由市场均衡点（E₀）' },
-        shortLabel: 'E₀',
+        id: 'eqMarket',
+        label: { en: 'Equilibrium (E*)', zh: '市场均衡点（E*）' },
+        shortLabel: 'E*',
         x: Number(qStar.toFixed(1)),
         y: Number(pStar.toFixed(1)),
         color: '#059669',
@@ -402,6 +558,20 @@ export const marketEquilibriumModel: EconomicModel = {
         yLabel: `P*=$${pStar.toFixed(1)}`
       }
     ];
+
+    if (params.showBaselineComparison && (params.demandShift !== 0 || params.supplyShift !== 0)) {
+      points.unshift({
+        id: 'eqBase',
+        label: { en: 'Initial Equilibrium (E₀)', zh: '初始基准均衡（E₀）' },
+        shortLabel: 'E₀',
+        x: Number(baseQ0.toFixed(1)),
+        y: Number(baseP0.toFixed(1)),
+        color: '#94a3b8',
+        showDropLines: true,
+        xLabel: `Q₀=${baseQ0.toFixed(1)}`,
+        yLabel: `P₀=$${baseP0.toFixed(1)}`
+      });
+    }
 
     if (params.taxPerUnit > 0) {
       points.push(
@@ -430,8 +600,35 @@ export const marketEquilibriumModel: EconomicModel = {
       );
     }
 
+    if (params.subsidyPerUnit > 0) {
+      points.push(
+        {
+          id: 'buyerPriceSub',
+          label: { en: 'Buyer Price with Subsidy (Pb)', zh: '享受补贴后买价（Pb）' },
+          shortLabel: 'Pb',
+          x: Number(actualQ.toFixed(1)),
+          y: Number(priceBuyer.toFixed(1)),
+          color: '#0891b2',
+          showDropLines: true,
+          xLabel: `Qsub=${actualQ.toFixed(1)}`,
+          yLabel: `Pb=$${priceBuyer.toFixed(1)}`
+        },
+        {
+          id: 'sellerPriceSub',
+          label: { en: 'Seller Price with Subsidy (Ps)', zh: '享受补贴后卖价（Ps）' },
+          shortLabel: 'Ps',
+          x: Number(actualQ.toFixed(1)),
+          y: Number(priceSeller.toFixed(1)),
+          color: '#dc2626',
+          showDropLines: true,
+          xLabel: '',
+          yLabel: `Ps=$${priceSeller.toFixed(1)}`
+        }
+      );
+    }
+
     // Welfare Shaded Areas
-    const shadedAreas = [];
+    const shadedAreas: ShadedAreaSpec[] = [];
 
     // Consumer Surplus (CS)
     if (actualQ > 0 && demandIntercept > priceBuyer) {
@@ -443,9 +640,9 @@ export const marketEquilibriumModel: EconomicModel = {
           { x: actualQ, y: priceBuyer },
           { x: 0, y: priceBuyer }
         ],
-        fill: '#3b82f6', // Blue tint
+        fill: '#3b82f6',
         opacity: 0.25,
-        pattern: 'diagonal-right' as const,
+        pattern: 'diagonal-right',
         value: Number(cs.toFixed(1)),
         valuePrefix: '$',
         visible: true
@@ -462,9 +659,9 @@ export const marketEquilibriumModel: EconomicModel = {
           { x: actualQ, y: priceSeller },
           { x: 0, y: priceSeller }
         ],
-        fill: '#f59e0b', // Amber tint
+        fill: '#f59e0b',
         opacity: 0.25,
-        pattern: 'diagonal-left' as const,
+        pattern: 'diagonal-left',
         value: Number(ps.toFixed(1)),
         valuePrefix: '$',
         visible: true
@@ -482,35 +679,64 @@ export const marketEquilibriumModel: EconomicModel = {
           { x: actualQ, y: priceSeller },
           { x: 0, y: priceSeller }
         ],
-        fill: '#8b5cf6', // Violet tint
+        fill: '#8b5cf6',
         opacity: 0.35,
-        pattern: 'dots' as const,
+        pattern: 'dots',
         value: Number(taxRevenue.toFixed(1)),
         valuePrefix: '$',
         visible: true
       });
     }
 
+    // Subsidy Expense Box
+    if (params.subsidyPerUnit > 0 && actualQ > 0) {
+      shadedAreas.push({
+        id: 'subsidyExpense',
+        label: { en: 'Government Subsidy Cost', zh: '政府补贴财政支出' },
+        points: [
+          { x: 0, y: priceSeller },
+          { x: actualQ, y: priceSeller },
+          { x: actualQ, y: priceBuyer },
+          { x: 0, y: priceBuyer }
+        ],
+        fill: '#06b6d4',
+        opacity: 0.3,
+        pattern: 'dots',
+        value: Number(subsidyExpense.toFixed(1)),
+        valuePrefix: '$',
+        visible: true
+      });
+    }
+
     // Deadweight Loss (DWL)
-    if (dwl > 0.1 && actualQ < qStar) {
+    if (dwl > 0.1) {
+      let dwlPoints = [
+        { x: actualQ, y: priceBuyer },
+        { x: qStar, y: pStar },
+        { x: actualQ, y: priceSeller }
+      ];
+      if (params.subsidyPerUnit > 0) {
+        // Subsidy DWL triangle is between Q* and actualQ (to the right of equilibrium)
+        dwlPoints = [
+          { x: qStar, y: pStar },
+          { x: actualQ, y: priceSeller },
+          { x: actualQ, y: priceBuyer }
+        ];
+      }
       shadedAreas.push({
         id: 'dwl',
         label: { en: 'Deadweight Loss (DWL)', zh: '无谓损失（DWL）' },
-        points: [
-          { x: actualQ, y: priceBuyer },
-          { x: qStar, y: pStar },
-          { x: actualQ, y: priceSeller }
-        ],
-        fill: '#ef4444', // Red warning
+        points: dwlPoints,
+        fill: '#ef4444',
         opacity: 0.38,
-        pattern: 'cross' as const,
+        pattern: 'cross',
         value: Number(dwl.toFixed(1)),
         valuePrefix: '$',
         visible: true
       });
     }
 
-    // Results metrics
+    // Results Metrics
     const results = [
       {
         id: 'eqPrice',
@@ -540,17 +766,17 @@ export const marketEquilibriumModel: EconomicModel = {
       },
       {
         id: 'totalSurplus',
-        label: { en: 'Total Welfare', zh: '社会总福利' },
+        label: { en: 'Total Welfare', zh: '社会总净福利' },
         value: `$${totalWelfare.toFixed(2)}`,
         color: '#10b981',
-        formula: 'CS + PS + Tax Revenue'
+        formula: params.subsidyPerUnit > 0 ? 'CS + PS - Subsidy Cost' : 'CS + PS + Tax Revenue'
       },
       {
         id: 'dwl',
         label: { en: 'Deadweight Loss (DWL)', zh: '无谓损失（DWL）' },
         value: `$${dwl.toFixed(2)}`,
         color: dwl > 0.1 ? '#dc2626' : '#64748b',
-        formula: '1/2 × Tax × (Q* - Qt)'
+        formula: params.subsidyPerUnit > 0 ? '1/2 × Subsidy × (Q_sub - Q*)' : '1/2 × Wedge × |Q* - Q_traded|'
       }
     ];
 
@@ -566,11 +792,20 @@ export const marketEquilibriumModel: EconomicModel = {
         },
         {
           id: 'taxIncidence',
-          label: { en: 'Consumer vs Producer Burden', zh: '消费者与生产者税负分担' },
+          label: { en: 'Tax Incidence (Buyer / Seller)', zh: '税负归宿分担（买方 / 卖方）' },
           value: `$${consumerIncidence.toFixed(1)} / $${producerIncidence.toFixed(1)}`,
           color: '#6366f1'
         }
       );
+    }
+
+    if (params.subsidyPerUnit > 0) {
+      results.push({
+        id: 'subsidyCost',
+        label: { en: 'Subsidy Expense', zh: '政府补贴财政总支出' },
+        value: `$${subsidyExpense.toFixed(2)}`,
+        color: '#0891b2'
+      });
     }
 
     if (isBindingControl && shortageOrSurplus) {
@@ -585,43 +820,52 @@ export const marketEquilibriumModel: EconomicModel = {
       });
     }
 
-    // Dynamic educational notes
-    const explanation = {
-      en: params.taxPerUnit > 0
-        ? `A per-unit excise tax of $${params.taxPerUnit} drives a wedge between buyer price ($${priceBuyer.toFixed(1)}) and seller price ($${priceSeller.toFixed(1)}). The reduction in quantity traded from ${qStar.toFixed(1)} to ${actualQ.toFixed(1)} creates a Deadweight Loss of $${dwl.toFixed(1)} because mutually beneficial trades are prevented.`
-        : isBindingControl
-        ? `The binding ${params.priceControlMode === 'ceiling' ? 'Price Ceiling' : 'Price Floor'} set at $${params.controlledPrice} restricts voluntary market transactions to ${actualQ.toFixed(1)} units, producing a ${shortageOrSurplus} of ${controlDiscrepancyAmount.toFixed(1)} units and generating a deadweight loss of $${dwl.toFixed(1)}.`
-        : `At the competitive market equilibrium (P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}), the Marginal Benefit equals Marginal Cost (Allocative Efficiency). Total economic surplus (CS + PS = $${totalWelfare.toFixed(1)}) is maximized, yielding zero deadweight loss.`,
-      zh: params.taxPerUnit > 0
-        ? `征收每单位 $${params.taxPerUnit} 的消费税在买方价格（$${priceBuyer.toFixed(1)}）与卖方价格（$${priceSeller.toFixed(1)}）之间形成税收楔子。交易量从 ${qStar.toFixed(1)} 减少到 ${actualQ.toFixed(1)}，因阻碍了互利交易而产生 $${dwl.toFixed(1)} 的无谓损失（DWL）。`
-        : isBindingControl
-        ? `设定在 $${params.controlledPrice} 的有约束力${params.priceControlMode === 'ceiling' ? '价格上限' : '价格下限'}将市场自愿交易量限制在 ${actualQ.toFixed(1)} 单位，引发了 ${controlDiscrepancyAmount.toFixed(1)} 单位的市场${shortageOrSurplus === 'shortage' ? '短缺' : '过剩'}，并造成 $${dwl.toFixed(1)} 的无谓损失。`
-        : `在完全竞争市场均衡点（P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}），边际收益等于边际成本（配置效率达成）。社会总经济剩余（CS + PS = $${totalWelfare.toFixed(1)}）达到最大化，无谓损失为零。`
-    };
+    // Dynamic Bilingual Educational Explanations
+    let explanationTextEn = '';
+    let explanationTextZh = '';
+
+    if (params.demandShift !== 0 || params.supplyShift !== 0) {
+      explanationTextEn += shiftAnalysis.explanationEn + ' ';
+      explanationTextZh += shiftAnalysis.explanationZh + ' ';
+    }
+
+    if (params.taxPerUnit > 0) {
+      explanationTextEn += `A per-unit tax of $${params.taxPerUnit} creates a tax wedge: buyers pay $${priceBuyer.toFixed(1)} while sellers receive $${priceSeller.toFixed(1)}. Market quantity contracts to ${actualQ.toFixed(1)} units, causing $${dwl.toFixed(1)} in deadweight loss.`;
+      explanationTextZh += `征收每单位 $${params.taxPerUnit} 的消费税形成税收楔子：买方支付 $${priceBuyer.toFixed(1)}，卖方实得 $${priceSeller.toFixed(1)}。交易量萎缩至 ${actualQ.toFixed(1)} 单位，造成 $${dwl.toFixed(1)} 的社会死重损失。`;
+    } else if (params.subsidyPerUnit > 0) {
+      explanationTextEn += `A per-unit production subsidy of $${params.subsidyPerUnit} lowers the buyer price to $${priceBuyer.toFixed(1)} and raises the seller price to $${priceSeller.toFixed(1)}. Output expands to ${actualQ.toFixed(1)} units (overproduction relative to allocatively efficient Q*=${qStar.toFixed(1)}), generating a deadweight loss of $${dwl.toFixed(1)} because the cost to government exceeds total surplus gains.`;
+      explanationTextZh += `每单位 $${params.subsidyPerUnit} 的生产补贴使买价降至 $${priceBuyer.toFixed(1)}，卖价升至 $${priceSeller.toFixed(1)}。产出扩张至 ${actualQ.toFixed(1)} 单位（超过配置有效水平 Q*=${qStar.toFixed(1)}，造成过度生产），因政府财政支出超过了剩余增长而产生 $${dwl.toFixed(1)} 的无谓损失。`;
+    } else if (isBindingControl) {
+      explanationTextEn += `The binding ${params.priceControlMode === 'ceiling' ? 'Price Ceiling' : 'Price Floor'} set at $${params.controlledPrice} restricts voluntary market transactions to ${actualQ.toFixed(1)} units, producing a ${shortageOrSurplus} of ${controlDiscrepancyAmount.toFixed(1)} units and generating a deadweight loss of $${dwl.toFixed(1)}.`;
+      explanationTextZh += `设定在 $${params.controlledPrice} 的有约束力${params.priceControlMode === 'ceiling' ? '价格上限' : '价格下限'}将市场交易量压制在 ${actualQ.toFixed(1)} 单位，引发了 ${controlDiscrepancyAmount.toFixed(1)} 单位的市场${shortageOrSurplus === 'shortage' ? '短缺' : '过剩'}，并造成 $${dwl.toFixed(1)} 的无谓损失。`;
+    } else if (explanationTextEn === '') {
+      explanationTextEn = `At the competitive equilibrium (P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}), Marginal Benefit equals Marginal Cost. Total economic surplus ($${totalWelfare.toFixed(1)}) is maximized with zero deadweight loss.`;
+      explanationTextZh = `在完全竞争均衡点（P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}），边际收益等于边际成本（MB = MC）。社会总剩余（$${totalWelfare.toFixed(1)}）达到最大，无谓损失为零。`;
+    }
 
     const analysisPoints = [
       {
-        en: 'Allocative Efficiency: Occurs when market produces where MB = MC, maximizing Total Surplus (CS + PS).',
-        zh: '配置效率（Allocative Efficiency）：当市场在 MB = MC 处生产时达成，社会总剩余（CS + PS）达到最大。'
+        en: `Elasticities at Equilibrium: Price Elasticity of Demand (PED) = ${ped.toFixed(2)} (${ped > 1 ? 'Elastic' : ped < 1 ? 'Inelastic' : 'Unit Elastic'}), Price Elasticity of Supply (PES) = ${pes.toFixed(2)}.`,
+        zh: `均衡点弹性：需求价格弹性（PED）= ${ped.toFixed(2)}（${ped > 1 ? '富有弹性' : ped < 1 ? '缺乏弹性' : '单位弹性'}），供给价格弹性（PES）= ${pes.toFixed(2)}。`
       },
       {
-        en: `Price Elasticity of Demand (PED) at equilibrium is approximately ${ped.toFixed(2)}, which ${ped > 1 ? 'is elastic (> 1)' : ped < 1 ? 'is inelastic (< 1)' : 'is unit-elastic (= 1)'}.`,
-        zh: `均衡点处的需求价格弹性（PED）约为 ${ped.toFixed(2)}，属于${ped > 1 ? '富有弹性（> 1）' : ped < 1 ? '缺乏弹性（< 1）' : '单位弹性（= 1）'}。`
+        en: 'Tax/Subsidy Burden: The more inelastic curve bears the larger share of tax burden or captures the larger share of subsidy benefit.',
+        zh: '税负与补贴归宿法则：弹性越小（越陡峭/越缺乏弹性）的一方承担越多的税负，或捕获越多的补贴收益。'
       },
       {
-        en: 'Tax Incidence: The burden of an excise tax falls more heavily on whichever side of the market is more inelastic.',
-        zh: '税负归宿原则：消费税的税收负担更多地落在弹性较小（更不敏感）的一方身上。'
+        en: 'Simultaneous Shifts Rule: When both curves shift simultaneously, either equilibrium price OR equilibrium quantity is unequivocally determined, while the other variable is indeterminate without knowing the exact magnitudes.',
+        zh: '供求双重移动法则：当供求两条曲线同时平移时，均衡价格或均衡数量中必然有一个是确定性变动的，而另一个在不知道具体平移幅度时必然是不确定的（Indeterminate）。'
       }
     ];
 
     return {
       axes: {
-        xLabel: { en: 'Quantity (Q)', zh: '数量（Q）' },
+        xLabel: { en: 'Quantity (Q in units)', zh: '数量（Q，单位）' },
         yLabel: { en: 'Price (P in $)', zh: '价格（P，美元）' },
         xMin: 0,
-        xMax: xMax,
+        xMax,
         yMin: 0,
-        yMax: yMax,
+        yMax,
         xStep: 10,
         yStep: 10,
         xSuffix: ' units',
@@ -631,7 +875,7 @@ export const marketEquilibriumModel: EconomicModel = {
       points,
       shadedAreas,
       results,
-      explanation,
+      explanation: { en: explanationTextEn, zh: explanationTextZh },
       analysisPoints
     };
   }

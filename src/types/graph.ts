@@ -106,6 +106,28 @@ export interface ScenarioPreset {
   params: Record<string, any>;
 }
 
+export interface CustomTableRow {
+  id: string;
+  label: BilingualText;
+  values: (string | number | BilingualText)[];
+  highlight?: boolean;
+}
+
+export interface CustomTableSpec {
+  title: BilingualText;
+  subtitle?: BilingualText;
+  headers: BilingualText[];
+  rows: CustomTableRow[];
+}
+
+export interface SecondaryGraphSpec {
+  title: BilingualText;
+  axes: AxisConfig;
+  curves: CurveSpec[];
+  points: KeyPointSpec[];
+  shadedAreas?: ShadedAreaSpec[];
+}
+
 export interface GraphCalculationOutput {
   axes: AxisConfig;
   curves: CurveSpec[];
@@ -114,6 +136,8 @@ export interface GraphCalculationOutput {
   results: ResultMetric[];
   explanation: BilingualText;
   analysisPoints: BilingualText[];
+  secondaryGraph?: SecondaryGraphSpec;
+  customTable?: CustomTableSpec;
 }
 
 export interface EconomicModel {

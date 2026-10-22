@@ -323,6 +323,52 @@ export const ppcModel: EconomicModel = {
       }
     ];
 
+    // Custom Interactive PPC Production Table
+    const customTable = {
+      title: { en: 'PPC Production & Efficiency Schedule', zh: 'PPC 生产组合与效率状态对照表' },
+      subtitle: { en: 'Points Comparison (CED Unit 1.3)', zh: '生产点位效率性质对比（CED 第一单元 1.3 考点）' },
+      headers: [
+        { en: 'Point', zh: '生产点位' },
+        { en: 'Consumer Goods (X)', zh: '消费品产量（X）' },
+        { en: 'Capital Goods (Y)', zh: '资本品产量（Y）' },
+        { en: 'Per-Unit Opp Cost', zh: '边际机会成本（ΔY/ΔX）' },
+        { en: 'Economic Status', zh: '经济效率判定' }
+      ],
+      rows: [
+        {
+          id: 'row-pt-a',
+          label: { en: 'Point A (Current Choice)', zh: '点 A（当前选定配置）' },
+          values: [
+            `${actualX.toFixed(0)} units`,
+            `${actualY.toFixed(0)} units`,
+            `${oppCost.toFixed(2)} Capital Goods`,
+            { en: 'Productively Efficient (On Frontier)', zh: '生产有效（位于 PPC 边界上）' }
+          ],
+          highlight: true
+        },
+        {
+          id: 'row-pt-b',
+          label: { en: 'Point B (Underutilization)', zh: '点 B（资源闲置）' },
+          values: [
+            `${(maxX * 0.35).toFixed(0)} units`,
+            `${(maxY * 0.35).toFixed(0)} units`,
+            'Zero Opportunity Cost',
+            { en: 'Inefficient (Recession / High Unemployment)', zh: '生产低效（经济衰退 / 高失业率）' }
+          ]
+        },
+        {
+          id: 'row-pt-c',
+          label: { en: 'Point C (Future Frontier)', zh: '点 C（未来潜在边界）' },
+          values: [
+            `${(maxX * 0.85).toFixed(0)} units`,
+            `${(maxY * 0.85).toFixed(0)} units`,
+            'N/A (Unattainable)',
+            { en: 'Unattainable with Current Resources', zh: '当前资源及技术下不可企及' }
+          ]
+        }
+      ]
+    };
+
     return {
       axes: {
         xLabel: { en: 'Consumer Goods (Quantity)', zh: '消费品数量（横轴）' },
@@ -340,6 +386,7 @@ export const ppcModel: EconomicModel = {
       points,
       shadedAreas,
       results,
+      customTable,
       explanation,
       analysisPoints
     };

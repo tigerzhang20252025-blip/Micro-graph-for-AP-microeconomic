@@ -87,9 +87,76 @@ export const GraphWorkspace: React.FC = () => {
 
       {/* Main Graph Grid (Chart on Left/Top, Controls on Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Chart Container & Calculations (7 Cols) */}
+        {/* Left Column: Chart Container, Secondary Graph, Custom Table & Calculations (7 Cols) */}
         <div className="lg:col-span-7 space-y-6">
           <GraphContainer data={graphOutput} title={tr(model.name)} />
+
+          {/* Secondary Graph (for Dual-Panel Models like Total Revenue or Firm side-by-side) */}
+          {graphOutput.secondaryGraph && (
+            <GraphContainer
+              data={{
+                axes: graphOutput.secondaryGraph.axes,
+                curves: graphOutput.secondaryGraph.curves,
+                points: graphOutput.secondaryGraph.points,
+                shadedAreas: graphOutput.secondaryGraph.shadedAreas || [],
+                results: [],
+                explanation: { en: '', zh: '' },
+                analysisPoints: []
+              }}
+              title={tr(graphOutput.secondaryGraph.title)}
+            />
+          )}
+
+          {/* Custom Interactive Table (e.g. Terms of Trade, Elasticity Matrix, Payoff Matrix) */}
+          {graphOutput.customTable && (
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-semibold text-slate-800 text-sm sm:text-base">
+                  {tr(graphOutput.customTable.title)}
+                </h3>
+                {graphOutput.customTable.subtitle && (
+                  <span className="text-xs text-slate-500 font-mono">
+                    {tr(graphOutput.customTable.subtitle)}
+                  </span>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
+                      {graphOutput.customTable.headers.map((h, i) => (
+                        <th key={i} className="py-2.5 px-3 font-semibold">
+                          {tr(h)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {graphOutput.customTable.rows.map((row) => (
+                      <tr
+                        key={row.id}
+                        className={`transition-colors ${
+                          row.highlight
+                            ? 'bg-blue-50/80 font-semibold text-blue-900 border-l-4 border-blue-600'
+                            : 'hover:bg-slate-50/60 text-slate-700'
+                        }`}
+                      >
+                        <td className="py-2.5 px-3 font-medium">
+                          {tr(row.label)}
+                        </td>
+                        {row.values.map((v, valIdx) => (
+                          <td key={valIdx} className="py-2.5 px-3 font-mono">
+                            {typeof v === 'object' && v !== null && 'en' in v ? tr(v as any) : String(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           <GraphResults results={graphOutput.results} />
         </div>
 
