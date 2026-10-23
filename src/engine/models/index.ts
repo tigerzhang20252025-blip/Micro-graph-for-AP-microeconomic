@@ -7,7 +7,9 @@ import { elasticityModel } from './elasticityModel';
 import { utilityMaximizationModel } from './utilityMaximizationModel';
 
 // Batch 2 Models: Production, Costs, and Market Structures
+import { productionFunctionModel } from './productionFunctionModel';
 import { costCurvesModel } from './costCurvesModel';
+import { lratcModel } from './lratcModel';
 import { perfectCompetitionModel } from './perfectCompetitionModel';
 import { monopolyModel } from './monopolyModel';
 import { gameTheoryModel } from './gameTheoryModel';
@@ -17,6 +19,7 @@ import { internationalTradeModel } from './internationalTradeModel';
 import { monopolisticCompModel } from './monopolisticCompModel';
 import { factorMarketModel } from './factorMarketModel';
 import { externalitiesModel } from './externalitiesModel';
+import { publicGoodsModel } from './publicGoodsModel';
 import { lorenzCurveModel } from './lorenzCurveModel';
 import { indifferenceCurveModel } from './indifferenceCurveModel';
 import { cournotDuopolyModel } from './cournotDuopolyModel';
@@ -35,7 +38,9 @@ export const ECONOMIC_MODELS: Record<string, EconomicModel> = {
   'international-trade-tariffs': internationalTradeModel,
 
   // Unit 3: Production, Cost, and Perfect Competition
+  'production-function-tp-mp-ap': productionFunctionModel,
   'cost-curves-short-run': costCurvesModel,
+  'lratc-economies-of-scale': lratcModel,
   'shutdown-rule': costCurvesModel,
   'perfect-competition-side-by-side': perfectCompetitionModel,
 
@@ -52,6 +57,7 @@ export const ECONOMIC_MODELS: Record<string, EconomicModel> = {
   // Unit 6: Market Failure & Role of Government
   'negative-externalities': externalitiesModel,
   'positive-externalities': externalitiesModel,
+  'public-goods-provision': publicGoodsModel,
   'lorenz-curve-gini': lorenzCurveModel,
 
   // Optional Honors Extensions

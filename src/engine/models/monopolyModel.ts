@@ -95,6 +95,25 @@ const presets: ScenarioPreset[] = [
       isPriceDiscrimination: false,
       regulationType: 'fair_return'
     }
+  },
+  {
+    id: 'natural-monopoly-falling-atc',
+    name: {
+      en: 'Natural Monopoly (High Fixed Cost & Falling ATC)',
+      zh: '自然垄断典型模型（高固定成本与持续下降的 ATC）'
+    },
+    description: {
+      en: 'Natural monopolies (e.g. utilities) feature huge fixed costs and declining ATC over the entire market demand. A single firm can supply the whole market at lower cost than multiple competitors.',
+      zh: '自然垄断（如自来水、电网）具备极高的固定投资，在整个市场需求范围内 ATC 持续递减。由一家企业独家生产的总成本远低于多家小企业分散竞争的成本。'
+    },
+    params: {
+      demandIntercept: 110,
+      demandSlope: -0.9,
+      mcSlope: 0.2,
+      fixedCost: 420,
+      isPriceDiscrimination: false,
+      regulationType: 'none'
+    }
   }
 ];
 

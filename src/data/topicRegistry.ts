@@ -350,6 +350,41 @@ export const AP_TOPICS: APTopic[] = [
   // UNIT 3: Production, Cost & Perfect Competition
   // ==========================================
   {
+    id: 'production-function-tp-mp-ap',
+    unit: 3,
+    topicCode: '3.1',
+    title: {
+      en: 'The Production Function: TP, MP & AP Curves',
+      zh: '生产函数：总产量、边际产量与平均产量曲线'
+    },
+    subtitle: {
+      en: 'Law of Diminishing Marginal Returns & Three Stages of Production',
+      zh: '边际报酬递减规律与三大生产阶段'
+    },
+    description: {
+      en: 'Models the relationship between variable labor input and output. Demonstrates diminishing marginal returns, why MP intersects AP at max AP, and the mirror-image link to short-run cost curves.',
+      zh: '构建可变劳动力投入与产出之间的关系模型。清晰展现边际报酬递减规律、为什么 MP 必然穿过 AP 的最高点，以及生产率与短期成本曲线的镜像对应。'
+    },
+    scope: 'core',
+    officialRef: 'CED Topic 3.1 / LO 3.1.A (Graph and explain the production function and the law of diminishing marginal returns)',
+    status: 'ready',
+    graphModelId: 'production-function-tp-mp-ap',
+    examWeight: '22–25%',
+    keywords: ['Production Function', 'Total Product', 'Marginal Product', 'Average Product', 'Diminishing Returns'],
+    keyTerms: [
+      { en: 'Total Product (TP)', zh: '总产量（TP）' },
+      { en: 'Marginal Product (MP)', zh: '边际产量（MP）' },
+      { en: 'Average Product (AP)', zh: '平均产量（AP）' },
+      { en: 'Law of Diminishing Marginal Returns', zh: '边际报酬递减规律' },
+      { en: 'Stage II Rational Range', zh: '第二阶段理性生产区间' }
+    ],
+    primaryCurves: [
+      { en: 'Marginal Product (MP)', zh: '边际产量曲线（MP）' },
+      { en: 'Average Product (AP)', zh: '平均产量曲线（AP）' },
+      { en: 'Total Product (TP)', zh: '总产量曲线（TP）' }
+    ]
+  },
+  {
     id: 'cost-curves-short-run',
     unit: 3,
     topicCode: '3.2',
@@ -381,6 +416,40 @@ export const AP_TOPICS: APTopic[] = [
       { en: 'Marginal Cost (MC)', zh: '边际成本（MC）' },
       { en: 'Average Total Cost (ATC)', zh: '平均总成本（ATC）' },
       { en: 'Average Variable Cost (AVC)', zh: '平均可变成本（AVC）' }
+    ]
+  },
+  {
+    id: 'lratc-economies-of-scale',
+    unit: 3,
+    topicCode: '3.3',
+    title: {
+      en: 'Long-Run Costs: LRATC, Economies of Scale & MES',
+      zh: '长期生产成本：LRATC 曲线、规模经济与最低有效规模'
+    },
+    subtitle: {
+      en: 'Economies, Constant & Diseconomies of Scale & Envelope Curve',
+      zh: '规模经济、规模报酬不变、规模不经济与包络线'
+    },
+    description: {
+      en: 'Models the envelope Long-Run Average Total Cost (LRATC) curve across plant sizes. Demonstrates Economies of Scale, Constant Returns to Scale, Diseconomies of Scale, and the Minimum Efficient Scale (MES).',
+      zh: '构建跨越不同厂房规模的长期平均总成本（LRATC）包络线。生动呈现规模经济、规模报酬不变、规模不经济以及最低有效规模（MES）。'
+    },
+    scope: 'core',
+    officialRef: 'CED Topic 3.3 / LO 3.3.A (Graph long-run costs, explain economies of scale, and identify minimum efficient scale)',
+    status: 'ready',
+    graphModelId: 'lratc-economies-of-scale',
+    examWeight: '22–25%',
+    keywords: ['LRATC', 'Economies of Scale', 'Diseconomies of Scale', 'MES', 'Returns to Scale'],
+    keyTerms: [
+      { en: 'Long-Run Average Total Cost (LRATC)', zh: '长期平均总成本（LRATC）' },
+      { en: 'Economies of Scale', zh: '规模经济（规模报酬递增）' },
+      { en: 'Constant Returns to Scale', zh: '规模报酬不变' },
+      { en: 'Diseconomies of Scale', zh: '规模不经济（规模报酬递减）' },
+      { en: 'Minimum Efficient Scale (MES)', zh: '最低有效规模（MES）' }
+    ],
+    primaryCurves: [
+      { en: 'LRATC Envelope Curve', zh: 'LRATC 包络线' },
+      { en: 'Short-Run SRATC Curves', zh: '各规模短期 SRATC 曲线' }
     ]
   },
   {
@@ -720,6 +789,41 @@ export const AP_TOPICS: APTopic[] = [
       { en: 'Marginal Social Benefit (MSB)', zh: '边际社会收益（MSB）' },
       { en: 'Marginal Private Benefit (MPB)', zh: '边际私人收益（MPB）' },
       { en: 'Marginal Cost (MC = MSC)', zh: '边际成本（MC = MSC）' }
+    ]
+  },
+  {
+    id: 'public-goods-provision',
+    unit: 6,
+    topicCode: '6.3',
+    title: {
+      en: 'Public Goods: Vertical Summation & Optimal Provision',
+      zh: '公共物品：垂直求和与最优提供量'
+    },
+    subtitle: {
+      en: 'Non-Rivalry, Non-Excludability, Free-Rider Failure & MSB = MC',
+      zh: '非竞争性、非排他性、搭便车市场失灵与 MSB = MC'
+    },
+    description: {
+      en: 'Contrasts horizontal market demand summation for private goods with vertical summation of willingness to pay for non-rival public goods (MSB = MB₁ + MB₂). Demonstrates free-rider market failure and optimal government provision where MSB = MC.',
+      zh: '鲜明对比私人物品需求的水平求和与非竞争性公共物品需求的垂直求和（MSB = MB₁ + MB₂）。直观剖析搭便车导致的私人市场失灵，以及政府最优供给量（MSB = MC）的确定。'
+    },
+    scope: 'core',
+    officialRef: 'CED Topic 6.3 / LO 6.3.A (Explain the characteristics of public goods and determine optimal provision)',
+    status: 'ready',
+    graphModelId: 'public-goods-provision',
+    examWeight: '8–12%',
+    keywords: ['Public Goods', 'Non-Rival', 'Non-Excludable', 'Free Rider', 'Vertical Summation', 'MSB=MC'],
+    keyTerms: [
+      { en: 'Public Good', zh: '公共物品' },
+      { en: 'Non-Rivalry in Consumption', zh: '消费的非竞争性' },
+      { en: 'Non-Excludability', zh: '受益的非排他性' },
+      { en: 'Free-Rider Problem', zh: '搭便车问题' },
+      { en: 'Vertical Summation of Demand', zh: '需求曲线垂直求和' }
+    ],
+    primaryCurves: [
+      { en: 'Marginal Social Benefit (MSB)', zh: '边际社会收益曲线（MSB）' },
+      { en: 'Marginal Cost (MC)', zh: '边际提供成本（MC）' },
+      { en: 'Individual MB Curves', zh: '个体边际收益曲线' }
     ]
   },
   {

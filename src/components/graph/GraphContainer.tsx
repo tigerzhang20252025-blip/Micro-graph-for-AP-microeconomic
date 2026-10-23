@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraphCalculationOutput, Point2D } from '../../types/graph';
+import { GraphCalculationOutput, Point2D, KeyPointSpec } from '../../types/graph';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
 
@@ -12,10 +12,10 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   const { tr } = useLanguage();
   const { layerVisibility } = useAppState();
 
-  // SVG dimensions & padding
+  // SVG dimensions & padding (Standard 4:3 high-res responsive viewBox)
   const svgWidth = 640;
   const svgHeight = 480;
-  const padding = { top: 35, right: 60, bottom: 55, left: 65 };
+  const padding = { top: 38, right: 65, bottom: 58, left: 68 };
 
   const plotWidth = svgWidth - padding.left - padding.right;
   const plotHeight = svgHeight - padding.top - padding.bottom;
@@ -50,13 +50,13 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   const xTicks: number[] = [];
   const xStep = axes.xStep || (axes.xMax - axes.xMin) / 5;
   for (let val = axes.xMin; val <= axes.xMax; val += xStep) {
-    xTicks.push(val);
+    xTicks.push(Number(val.toFixed(1)));
   }
 
   const yTicks: number[] = [];
   const yStep = axes.yStep || (axes.yMax - axes.yMin) / 5;
   for (let val = axes.yMin; val <= axes.yMax; val += yStep) {
-    yTicks.push(val);
+    yTicks.push(Number(val.toFixed(1)));
   }
 
   // Interactive mouse tracking
@@ -67,7 +67,6 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
     const clientX = e.clientX - rect.left;
     const clientY = e.clientY - rect.top;
 
-    // Convert SVG pixel to viewBox scale
     const scaleFactorX = svgWidth / rect.width;
     const scaleFactorY = svgHeight / rect.height;
     const svgX = clientX * scaleFactorX;
@@ -89,6 +88,166 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // ANTI-COLLISION ENGINE 1: Key Point Labels & Background Badges
+  // ---------------------------------------------------------------------------
+  interface PointBadgeLayout {
+    pt: KeyPointSpec;
+    sx: number;
+    sy: number;
+    tx: number;
+    ty: number;
+    anchor: 'start' | 'end' | 'middle';
+    badgeWidth: number;
+    badgeHeight: number;
+    rectX: number;
+    rectY: number;
+  }
+
+  const pointLayouts: PointBadgeLayout[] = points.map((pt, idx) => {
+    const sx = scaleX(pt.x);
+    const sy = scaleY(pt.y);
+    const textLen = pt.shortLabel.length;
+    const badgeWidth = Math.max(34, textLen * 7.8 + 12);
+    const badgeHeight = 18;
+
+    let offsetX = 10;
+    let offsetY = -8;
+    let anchor: 'start' | 'end' | 'middle' = 'start';
+
+    // Top boundary flip
+    if (sy < padding.top + 24) {
+      offsetY = 18;
+    } else if (sy > svgHeight - padding.bottom - 20) {
+      offsetY = -12;
+    }
+
+    // Right boundary flip
+    if (sx + badgeWidth > svgWidth - padding.right + 15) {
+      offsetX = -10;
+      anchor = 'end';
+    } else if (sx < padding.left + 35) {
+      offsetX = 10;
+      anchor = 'start';
+    }
+
+    // Pairwise collision avoidance with previously placed points
+    for (let j = 0; j < idx; j++) {
+      const other = points[j];
+      const osx = scaleX(other.x);
+      const osy = scaleY(other.y);
+      const dist = Math.hypot(sx - osx, sy - osy);
+      if (dist < 34) {
+        if (offsetY < 0) {
+          offsetY = 18;
+        } else {
+          offsetY = -18;
+        }
+        if (anchor === 'start' && sx > svgWidth / 2) {
+          anchor = 'end';
+          offsetX = -10;
+        }
+        break;
+      }
+    }
+
+    const tx = sx + offsetX;
+    const ty = sy + offsetY;
+    const rectX = anchor === 'end' ? tx - badgeWidth + 2 : tx - 4;
+    const rectY = ty - 13;
+
+    return { pt, sx, sy, tx, ty, anchor, badgeWidth, badgeHeight, rectX, rectY };
+  });
+
+  // ---------------------------------------------------------------------------
+  // ANTI-COLLISION ENGINE 2: Drop-Line Value Badges (X and Y Axis)
+  // ---------------------------------------------------------------------------
+  // Stagger X-axis drop badges into two alternating tiers if within 38px
+  const visibleDropX = points.filter((p) => p.showDropLines && p.xLabel);
+  const sortedDropX = [...visibleDropX].sort((a, b) => scaleX(a.x) - scaleX(b.x));
+  const dropXConfig: Record<string, { tier: number; yPos: number }> = {};
+  let lastSx = -999;
+  let curTier = 0;
+
+  sortedDropX.forEach((pt) => {
+    const sx = scaleX(pt.x);
+    if (sx - lastSx < 40) {
+      curTier = curTier === 0 ? 1 : 0;
+    } else {
+      curTier = 0;
+    }
+    lastSx = sx;
+    dropXConfig[pt.id] = {
+      tier: curTier,
+      yPos: svgHeight - padding.bottom + (curTier === 0 ? 16 : 28)
+    };
+  });
+
+  // Stagger Y-axis drop badges if within 18px vertically
+  const visibleDropY = points.filter((p) => p.showDropLines && p.yLabel);
+  const sortedDropY = [...visibleDropY].sort((a, b) => scaleY(a.y) - scaleY(b.y));
+  const dropYConfig: Record<string, number> = {};
+  let lastSy = -999;
+  let yShift = 0;
+
+  sortedDropY.forEach((pt) => {
+    const sy = scaleY(pt.y);
+    if (sy - lastSy < 18) {
+      yShift = yShift === 0 ? -8 : (yShift === -8 ? 8 : 0);
+    } else {
+      yShift = 0;
+    }
+    lastSy = sy;
+    dropYConfig[pt.id] = yShift;
+  });
+
+  // ---------------------------------------------------------------------------
+  // ANTI-COLLISION ENGINE 3: Curve End Labels Clamping & Vertical Staggering
+  // ---------------------------------------------------------------------------
+  interface CurveLabelLayout {
+    curveId: string;
+    color: string;
+    shortLabel: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }
+
+  const rawCurveLabels: CurveLabelLayout[] = curves
+    .filter((c) => c.visible && c.points.length > 0)
+    .map((curve) => {
+      const lastPt = curve.points[curve.points.length - 1];
+      const rawX = scaleX(lastPt.x);
+      const rawY = scaleY(lastPt.y);
+      const width = Math.max(30, curve.shortLabel.length * 8.5 + 12);
+      const height = 18;
+
+      // Clamp within viewport
+      const clampedX = Math.min(rawX + 8, svgWidth - width - 6);
+      const clampedY = Math.max(padding.top + 10, Math.min(svgHeight - padding.bottom - 6, rawY + 4));
+
+      return {
+        curveId: curve.id,
+        color: curve.color,
+        shortLabel: curve.shortLabel,
+        x: clampedX,
+        y: clampedY,
+        width,
+        height
+      };
+    });
+
+  // Separate curve labels vertically if they are close
+  const curveLabels = [...rawCurveLabels].sort((a, b) => a.y - b.y);
+  for (let i = 1; i < curveLabels.length; i++) {
+    const prev = curveLabels[i - 1];
+    const curr = curveLabels[i];
+    if (Math.abs(curr.x - prev.x) < 50 && curr.y - prev.y < 21) {
+      curr.y = Math.min(svgHeight - padding.bottom - 6, prev.y + 21);
+    }
+  }
+
   return (
     <div className="relative w-full bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-3 sm:p-4">
       {/* Chart Header */}
@@ -98,7 +257,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
           {title}
         </h3>
         {hoverCoord && (
-          <div className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200">
+          <div className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
             Q: {hoverCoord.xVal.toFixed(1)} | P: ${hoverCoord.yVal.toFixed(1)}
           </div>
         )}
@@ -145,7 +304,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
           {/* Grid Lines */}
           {layerVisibility.showGrid && (
-            <g className="grid-lines" opacity="0.35">
+            <g className="grid-lines" opacity="0.32">
               {xTicks.map((x) => (
                 <line
                   key={`grid-x-${x}`}
@@ -187,7 +346,6 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
                 return (
                   <g key={`area-${area.id}`}>
-                    {/* Base color tint */}
                     <path
                       d={pathString}
                       fill={area.fill}
@@ -196,7 +354,6 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
                       strokeWidth="1"
                       strokeOpacity="0.6"
                     />
-                    {/* Pattern overlay for colorblind accessibility */}
                     {patternUrl && (
                       <path
                         d={pathString}
@@ -210,7 +367,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             </g>
           )}
 
-          {/* Equilibrium Drop Lines */}
+          {/* Equilibrium Drop Lines & Anti-Collision Axis Badges */}
           {layerVisibility.showDropLines && (
             <g className="drop-lines">
               {points.map((pt) => {
@@ -220,8 +377,11 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
                 const axisY = svgHeight - padding.bottom;
                 const axisX = padding.left;
 
+                const xCfg = dropXConfig[pt.id] || { tier: 0, yPos: axisY + 16 };
+                const yShiftOffset = dropYConfig[pt.id] || 0;
+
                 return (
-                  <g key={`dropline-${pt.id}`} opacity="0.75">
+                  <g key={`dropline-${pt.id}`} opacity="0.85">
                     {/* Vertical drop line to X-axis */}
                     <line
                       x1={sx}
@@ -242,27 +402,66 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
                       strokeWidth="1.5"
                       strokeDasharray="4,4"
                     />
-                    {/* Value badge on X-axis */}
-                    {pt.xLabel && (
-                      <text
-                        x={sx}
-                        y={axisY + 16}
-                        textAnchor="middle"
-                        className="text-[11px] font-mono font-medium fill-slate-700"
-                      >
-                        {pt.xLabel}
-                      </text>
+
+                    {/* Tier connector tick if staggered below */}
+                    {xCfg.tier === 1 && (
+                      <line
+                        x1={sx}
+                        y1={axisY + 4}
+                        x2={sx}
+                        y2={xCfg.yPos - 11}
+                        stroke={pt.color || '#64748b'}
+                        strokeWidth="1"
+                        strokeDasharray="2,2"
+                      />
                     )}
-                    {/* Value badge on Y-axis */}
+
+                    {/* Anti-collision value badge on X-axis */}
+                    {pt.xLabel && (
+                      <g transform={`translate(${sx}, ${xCfg.yPos})`}>
+                        <rect
+                          x={-(pt.xLabel.length * 6.5) / 2 - 4}
+                          y="-11"
+                          width={pt.xLabel.length * 6.5 + 8}
+                          height="15"
+                          rx="3"
+                          fill="#f8fafc"
+                          stroke="#cbd5e1"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x="0"
+                          y="1"
+                          textAnchor="middle"
+                          className="text-[10.5px] font-mono font-semibold fill-slate-800"
+                        >
+                          {pt.xLabel}
+                        </text>
+                      </g>
+                    )}
+
+                    {/* Anti-collision value badge on Y-axis */}
                     {pt.yLabel && (
-                      <text
-                        x={axisX - 8}
-                        y={sy + 4}
-                        textAnchor="end"
-                        className="text-[11px] font-mono font-medium fill-slate-700"
-                      >
-                        {pt.yLabel}
-                      </text>
+                      <g transform={`translate(${axisX - 8}, ${sy + 4 + yShiftOffset})`}>
+                        <rect
+                          x={-(pt.yLabel.length * 6.5) - 6}
+                          y="-11"
+                          width={pt.yLabel.length * 6.5 + 6}
+                          height="15"
+                          rx="3"
+                          fill="#f8fafc"
+                          stroke="#cbd5e1"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x="-3"
+                          y="1"
+                          textAnchor="end"
+                          className="text-[10.5px] font-mono font-semibold fill-slate-800"
+                        >
+                          {pt.yLabel}
+                        </text>
+                      </g>
                     )}
                   </g>
                 );
@@ -275,85 +474,100 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             {curves.map((curve) => {
               if (!curve.visible) return null;
               const pathD = pointsToSvgPath(curve.points);
-              const lastPt = curve.points[curve.points.length - 1];
 
               return (
-                <g key={`curve-${curve.id}`}>
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke={curve.color}
-                    strokeWidth={curve.strokeWidth || 3}
-                    strokeDasharray={curve.strokeDasharray || 'none'}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="transition-all duration-150"
-                  />
-                  {/* Curve End Label */}
-                  {lastPt && (
-                    <g transform={`translate(${scaleX(lastPt.x) + 8}, ${scaleY(lastPt.y) + 4})`}>
-                      <rect
-                        x="-2"
-                        y="-12"
-                        width={curve.shortLabel.length * 9 + 8}
-                        height="18"
-                        rx="4"
-                        fill="white"
-                        fillOpacity="0.9"
-                        stroke={curve.color}
-                        strokeWidth="1"
-                      />
-                      <text
-                        x="2"
-                        y="1"
-                        className="text-[11px] font-bold"
-                        fill={curve.color}
-                      >
-                        {curve.shortLabel}
-                      </text>
-                    </g>
-                  )}
-                </g>
+                <path
+                  key={`curve-${curve.id}`}
+                  d={pathD}
+                  fill="none"
+                  stroke={curve.color}
+                  strokeWidth={curve.strokeWidth || 3}
+                  strokeDasharray={curve.strokeDasharray || 'none'}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               );
             })}
+
+            {/* Anti-collision clamped Curve End Labels */}
+            {curveLabels.map((lbl) => (
+              <g
+                key={`curve-label-${lbl.curveId}`}
+                transform={`translate(${lbl.x}, ${lbl.y})`}
+                className="cursor-default"
+              >
+                <rect
+                  x="-2"
+                  y="-12"
+                  width={lbl.width}
+                  height={lbl.height}
+                  rx="4"
+                  fill="#ffffff"
+                  fillOpacity="0.94"
+                  stroke={lbl.color}
+                  strokeWidth="1.2"
+                />
+                <text
+                  x="4"
+                  y="1"
+                  className="text-[11px] font-bold"
+                  fill={lbl.color}
+                >
+                  {lbl.shortLabel}
+                </text>
+              </g>
+            ))}
           </g>
 
-          {/* Key Coordinate Points (Equilibria, Intersections) */}
+          {/* Key Coordinate Points (Equilibria, Intersections) - ZERO FLICKER & NO TEXT COLLISION */}
           <g className="key-points">
-            {points.map((pt) => {
-              const sx = scaleX(pt.x);
-              const sy = scaleY(pt.y);
-              return (
-                <g key={`pt-${pt.id}`} className="cursor-pointer group">
-                  {/* Outer pulse circle */}
-                  <circle
-                    cx={sx}
-                    cy={sy}
-                    r="8"
-                    fill={pt.color || '#059669'}
-                    fillOpacity="0.2"
-                    className="animate-pulse"
+            {pointLayouts.map((item) => (
+              <g key={`pt-${item.pt.id}`} className="cursor-pointer">
+                {/* Static Outer Halo (Zero Flicker / No Pulse) */}
+                <circle
+                  cx={item.sx}
+                  cy={item.sy}
+                  r="7.5"
+                  fill={item.pt.color || '#059669'}
+                  fillOpacity="0.16"
+                  stroke={item.pt.color || '#059669'}
+                  strokeWidth="1"
+                  strokeOpacity="0.45"
+                />
+                {/* Core Crisp Dot */}
+                <circle
+                  cx={item.sx}
+                  cy={item.sy}
+                  r="4.2"
+                  fill={item.pt.color || '#059669'}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                />
+
+                {/* Point Label with Clean Background Pill Badge */}
+                <g className="point-badge">
+                  <rect
+                    x={item.rectX}
+                    y={item.rectY}
+                    width={item.badgeWidth}
+                    height={item.badgeHeight}
+                    rx="4"
+                    fill="#ffffff"
+                    fillOpacity="0.92"
+                    stroke="#e2e8f0"
+                    strokeWidth="1"
                   />
-                  {/* Core dot */}
-                  <circle
-                    cx={sx}
-                    cy={sy}
-                    r="4.5"
-                    fill={pt.color || '#059669'}
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                  />
-                  {/* Point Label */}
                   <text
-                    x={sx + 8}
-                    y={sy - 8}
-                    className="text-[12px] font-bold fill-slate-800 select-none filter drop-shadow-sm"
+                    x={item.tx}
+                    y={item.ty}
+                    textAnchor={item.anchor}
+                    className="text-[11.5px] font-bold fill-slate-800 select-none"
                   >
-                    {pt.shortLabel}
+                    {item.pt.shortLabel}
                   </text>
                 </g>
-              );
-            })}
+              </g>
+            ))}
           </g>
 
           {/* Main X and Y Axes */}
@@ -372,7 +586,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             <line
               x1={padding.left}
               y1={svgHeight - padding.bottom}
-              x2={svgWidth - padding.right + 16}
+              x2={svgWidth - padding.right + 18}
               y2={svgHeight - padding.bottom}
               stroke="#334155"
               strokeWidth="2"
@@ -412,7 +626,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             {/* Y Axis Title */}
             <text
               x={padding.left}
-              y={padding.top - 20}
+              y={padding.top - 18}
               textAnchor="start"
               className="text-xs font-semibold fill-slate-800"
             >
@@ -421,8 +635,8 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
             {/* X Axis Title */}
             <text
-              x={svgWidth - padding.right + 18}
-              y={svgHeight - padding.bottom + 18}
+              x={svgWidth - padding.right + 20}
+              y={svgHeight - padding.bottom + 20}
               textAnchor="end"
               className="text-xs font-semibold fill-slate-800"
             >

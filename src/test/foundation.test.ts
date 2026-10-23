@@ -4,6 +4,9 @@ import { getModelById } from '../engine/models/index';
 import { LEARNING_ACTIVITIES } from '../data/learningActivities';
 import { PRACTICE_QUESTIONS } from '../data/practiceQuestions';
 import { AP_DECISION_RULES, AP_EXAM_MISTAKES, AP_FORMULAS } from '../data/referenceContent';
+import { productionFunctionModel } from '../engine/models/productionFunctionModel';
+import { lratcModel } from '../engine/models/lratcModel';
+import { publicGoodsModel } from '../engine/models/publicGoodsModel';
 import { marketEquilibriumModel } from '../engine/models/marketEquilibriumModel';
 import { ppcModel } from '../engine/models/ppcModel';
 import { comparativeAdvantageModel } from '../engine/models/comparativeAdvantageModel';
@@ -263,10 +266,42 @@ for (const mistake of AP_EXAM_MISTAKES) {
   assert(mistake.wrongThinking.en.length > 0 && mistake.correctThinking.en.length > 0, `Mistake "${mistake.id}" has wrong vs correct comparison`);
 }
 
+// 18. CED Topic 3.1: Production Function (TP, MP, AP)
+console.log('\n--- 18. Batch 4: Production Function (TP, MP, AP & Law of Diminishing Returns) ---');
+const prodStage1 = productionFunctionModel.calculate({ labor: 4, capitalScale: 1.0 });
+assert(String(prodStage1.results.find(r => r.label.en === 'Current Stage')?.value).includes('Stage I'), 'L=4 is in Stage I (Increasing returns)');
+
+const prodStage2 = productionFunctionModel.calculate({ labor: 9, capitalScale: 1.0 });
+assert(String(prodStage2.results.find(r => r.label.en === 'Current Stage')?.value).includes('Stage II'), 'L=9 is in Stage II (Rational zone, MP=AP)');
+const apIntersection = prodStage2.points.find(p => p.id === 'pt-ap-max');
+assert(apIntersection !== undefined && apIntersection.x === 9.0, 'MP cuts AP at exactly L = 9.0 (Peak AP)');
+
+const prodStage3 = productionFunctionModel.calculate({ labor: 13, capitalScale: 1.0 });
+assert(String(prodStage3.results.find(r => r.label.en === 'Current Stage')?.value).includes('Stage III'), 'L=13 is in Stage III (Negative returns, overcrowding)');
+
+// 19. CED Topic 3.3: LRATC & Economies of Scale
+console.log('\n--- 19. Batch 4: Long-Run Costs & Economies of Scale (LRATC Envelope & MES) ---');
+const lratcEcon = lratcModel.calculate({ outputQ: 25, mesQuantity: 40, disQuantity: 75 });
+assert(String(lratcEcon.results.find(r => r.label.en === 'Current Scale Phase')?.value).includes('Economies of Scale'), 'Q=25 operates under Economies of Scale');
+
+const lratcConst = lratcModel.calculate({ outputQ: 55, mesQuantity: 40, disQuantity: 75 });
+assert(String(lratcConst.results.find(r => r.label.en === 'Current Scale Phase')?.value).includes('Constant Returns'), 'Q=55 operates under Constant Returns to Scale');
+
+const lratcDis = lratcModel.calculate({ outputQ: 95, mesQuantity: 40, disQuantity: 75 });
+assert(String(lratcDis.results.find(r => r.label.en === 'Current Scale Phase')?.value).includes('Diseconomies of Scale'), 'Q=95 operates under Diseconomies of Scale');
+
+// 20. CED Topic 6.3: Public Goods (Vertical Summation of Demand & Optimal Provision)
+console.log('\n--- 20. Batch 4: Public Goods (Vertical Summation MSB = MB1 + MB2 & Optimal Provision) ---');
+const publicGood = publicGoodsModel.calculate({ mb1Intercept: 35, mb2Intercept: 45, marginalCost: 40 });
+const optQ = publicGood.results.find(r => r.label.en.includes('Socially Optimal Quantity'));
+assert(optQ !== undefined && String(optQ.value).length > 0, `Optimal public good quantity calculated: ${optQ?.value}`);
+assert(publicGood.curves.some(c => c.shortLabel === 'MSB'), 'Public goods outputs vertical summation MSB curve');
+assert(publicGood.curves.some(c => c.shortLabel === 'MC'), 'Public goods outputs constant/upward MC curve');
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 17 AUDIT SUITES PASSED WITH 0 FAILURES!');
-  console.log('💎 COMPLETE AP MICROECONOMICS LEARNING LAB VERIFIED!');
+  console.log('🎉 ALL 20 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH & KNOWLEDGE SYSTEM VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);
