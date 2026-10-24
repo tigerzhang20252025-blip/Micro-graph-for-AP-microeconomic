@@ -379,6 +379,25 @@ assert(mrpResults.length > 0 && mrpResults[0].id === 'term-mrp', 'Search "MRP" r
 const zhResults = searchDictionary('边际成本');
 assert(zhResults.length > 0 && zhResults[0].id === 'term-marginal-cost', 'Search "边际成本" returns Marginal Cost');
 
+// Parenthetical acronym and robust concept jumping search checks
+const caParenResults = searchDictionary('Comparative Advantage (CA)');
+assert(caParenResults.length > 0 && caParenResults[0].id === 'term-comparative-advantage', 'Search with parenthetical acronym "Comparative Advantage (CA)" ranks Comparative Advantage as #1');
+
+const caAbbrResults = searchDictionary('CA');
+assert(caAbbrResults.length > 0 && caAbbrResults[0].id === 'term-comparative-advantage', 'Search "CA" ranks Comparative Advantage as #1');
+
+const caZhResults = searchDictionary('比较优势');
+assert(caZhResults.length > 0 && caZhResults[0].id === 'term-comparative-advantage', 'Search "比较优势" ranks Comparative Advantage as #1');
+
+const hhiResults = searchDictionary('HHI');
+assert(hhiResults.length > 0 && hhiResults[0].id === 'term-herfindahl-index', 'Search "HHI" ranks Herfindahl-Hirschman Index as #1');
+
+const trpeResults = searchDictionary('TRPE');
+assert(trpeResults.length > 0 && trpeResults[0].id === 'term-total-revenue-test', 'Search "TRPE" ranks Total Revenue Test as #1');
+
+const oooResults = searchDictionary('OOO Rule');
+assert(oooResults.length > 0 && oooResults[0].id === 'term-output-method-ooo', 'Search "OOO Rule" ranks Output Method as #1');
+
 const formulaResults = searchDictionary('d(TC)/dQ');
 assert(formulaResults.some(t => t.id === 'term-marginal-cost'), 'Search formula "d(TC)/dQ" finds Marginal Cost');
 

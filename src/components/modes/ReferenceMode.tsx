@@ -7,7 +7,7 @@ import {
   AP_EXAM_MISTAKES,
   AP_FORMULAS
 } from '../../data/referenceContent';
-import { searchDictionary } from '../../engine/search/dictionarySearch';
+import { searchDictionary, getTermById } from '../../engine/search/dictionarySearch';
 import {
   BookOpen,
   CheckCircle2,
@@ -35,7 +35,8 @@ const CATEGORIES = [
   { id: 'welfare', en: 'Welfare & Policy', zh: '福利与管制' },
   { id: 'factor', en: 'Factor Markets', zh: '要素市场' },
   { id: 'externality', en: 'Externalities & Public', zh: '外部性与公共品' },
-  { id: 'structure', en: 'Market Structures', zh: '市场竞争形态' }
+  { id: 'structure', en: 'Market Structures', zh: '市场竞争形态' },
+  { id: 'general', en: 'Foundations & Rules', zh: '基础理论与做题法则' }
 ];
 
 export const ReferenceMode: React.FC = () => {
@@ -46,6 +47,7 @@ export const ReferenceMode: React.FC = () => {
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(undefined);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewStyle, setViewStyle] = useState<'cards' | 'table'>('cards');
+  const [highlightedTermId, setHighlightedTermId] = useState<string | null>(null);
 
   const isZh = language === 'zh';
 
@@ -53,6 +55,30 @@ export const ReferenceMode: React.FC = () => {
     unit: selectedUnit,
     category: selectedCategory !== 'all' ? selectedCategory : undefined
   });
+
+  const handleJumpToTerm = (termId: string, fallbackLabel?: string) => {
+    const target = getTermById(termId);
+    // Clear unit and category filters to avoid hiding target term
+    setSelectedUnit(undefined);
+    setSelectedCategory('all');
+
+    if (target) {
+      setSearchTerm(target.en);
+      setHighlightedTermId(target.id);
+      setTimeout(() => {
+        const el = document.getElementById(`term-card-${target.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+      setTimeout(() => {
+        setHighlightedTermId(null);
+      }, 3000);
+    } else if (fallbackLabel) {
+      const cleanFallback = fallbackLabel.replace(/\([^)]*\)/g, '').trim();
+      setSearchTerm(cleanFallback);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -137,6 +163,19 @@ export const ReferenceMode: React.FC = () => {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold">
                   {filteredTerms.length} {isZh ? '词条' : 'terms'}
                 </span>
+                {(searchTerm || selectedUnit !== undefined || selectedCategory !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedUnit(undefined);
+                      setSelectedCategory('all');
+                    }}
+                    className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>{isZh ? '显示全部' : 'Show All'}</span>
+                  </button>
+                )}
               </div>
 
               {/* View Switcher: Cards vs Table */}
@@ -196,7 +235,7 @@ export const ReferenceMode: React.FC = () => {
                 <Sparkles className="w-3 h-3 text-amber-500" />
                 {isZh ? '高频缩写:' : 'Popular:'}
               </span>
-              {['MC', 'ATC', 'DWL', 'PED', 'Mr. DARP', 'MRP', 'MSC', 'PPC', 'NE', 'Gini', 'Shutdown Rule'].map((abbr) => (
+              {['MC', 'ATC', 'DWL', 'PED', 'Mr. DARP', 'MRP', 'MSC', 'PPC', 'NE', 'Gini', 'TRPE', 'HHI', 'FOP', 'MRC'].map((abbr) => (
                 <button
                   key={abbr}
                   onClick={() => setSearchTerm(abbr)}
@@ -288,113 +327,123 @@ export const ReferenceMode: React.FC = () => {
           ) : viewStyle === 'cards' ? (
             /* Cards View */
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {filteredTerms.map((term) => (
-                <div
-                  key={term.id}
-                  className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between space-y-4 group"
-                >
-                  <div className="space-y-3">
-                    {/* Top Badges */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        {term.abbreviation ? (
-                          <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono font-extrabold text-xs shadow-2xs">
-                            {term.abbreviation}
+              {filteredTerms.map((term) => {
+                const isHighlighted = highlightedTermId === term.id;
+                return (
+                  <div
+                    key={term.id}
+                    id={`term-card-${term.id}`}
+                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all flex flex-col justify-between space-y-4 group ${
+                      isHighlighted
+                        ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/20 shadow-md'
+                        : 'border-slate-200/80 hover:border-blue-300'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Top Badges */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          {term.abbreviation ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono font-extrabold text-xs shadow-2xs">
+                              {term.abbreviation}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 font-mono font-bold text-xs">
+                              U{term.unit}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] font-semibold">
+                            Unit {term.unit} ({term.topicCode})
                           </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-200 text-slate-700 font-mono font-bold text-xs">
-                            U{term.unit}
-                          </span>
-                        )}
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[11px] font-semibold">
-                          Unit {term.unit} ({term.topicCode})
+                        </div>
+                        <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded uppercase tracking-wider">
+                          {term.category}
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded uppercase tracking-wider">
-                        {term.category}
-                      </span>
-                    </div>
 
-                    {/* Titles */}
-                    <div>
-                      <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {isZh ? term.zh : term.en}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium">
-                        {isZh ? term.en : term.zh}
-                      </p>
-                    </div>
-
-                    {/* Mathematical Formula Callout */}
-                    {term.formula && (
-                      <div className="p-2.5 rounded-xl bg-slate-900 text-emerald-300 font-mono text-xs font-bold border border-slate-800 flex items-start gap-2">
-                        <Calculator className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <div className="break-all">{term.formula}</div>
+                      {/* Titles */}
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                          {isZh ? term.zh : term.en}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {isZh ? term.en : term.zh}
+                        </p>
                       </div>
-                    )}
 
-                    {/* Definition */}
-                    <div className="text-xs text-slate-700 leading-relaxed font-sans space-y-1">
-                      <p className="font-medium text-slate-800">{isZh ? term.definition.zh : term.definition.en}</p>
-                      <p className="text-slate-400 italic text-[11px]">{isZh ? term.definition.en : term.definition.zh}</p>
-                    </div>
-
-                    {/* Real-World Concrete Example */}
-                    {term.example && (
-                      <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 space-y-1">
-                        <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-amber-600" />
-                          <span>{isZh ? '真实案例与典型数值计算' : 'Numerical Example'}</span>
+                      {/* Mathematical Formula Callout */}
+                      {term.formula && (
+                        <div className="p-2.5 rounded-xl bg-slate-900 text-emerald-300 font-mono text-xs font-bold border border-slate-800 flex items-start gap-2">
+                          <Calculator className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                          <div className="break-all">{term.formula}</div>
                         </div>
-                        <p className="text-[11px] leading-relaxed">{tr(term.example)}</p>
-                      </div>
-                    )}
+                      )}
 
-                    {/* AP Exam Tips */}
-                    {term.examTip && (
-                      <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-950 space-y-1">
-                        <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
-                          <Lightbulb className="w-3 h-3 text-blue-600" />
-                          <span>{isZh ? 'AP 命题与答题要点' : 'AP Exam Tip'}</span>
+                      {/* Definition */}
+                      <div className="text-xs text-slate-700 leading-relaxed font-sans space-y-1">
+                        <p className="font-medium text-slate-800">{isZh ? term.definition.zh : term.definition.en}</p>
+                        <p className="text-slate-400 italic text-[11px]">{isZh ? term.definition.en : term.definition.zh}</p>
+                      </div>
+
+                      {/* Real-World Concrete Example */}
+                      {term.example && (
+                        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 space-y-1">
+                          <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <span>{isZh ? '真实案例与典型数值计算' : 'Numerical Example'}</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed">{tr(term.example)}</p>
                         </div>
-                        <p className="text-[11px] leading-relaxed">{tr(term.examTip)}</p>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Related Concepts */}
-                    {term.relatedConcepts && term.relatedConcepts.length > 0 && (
-                      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-                          {isZh ? '关联概念:' : 'Related:'}
-                        </span>
-                        {term.relatedConcepts.map((rel) => (
-                          <button
-                            key={rel.termId}
-                            onClick={() => setSearchTerm(rel.labelEn)}
-                            className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 text-[11px] font-medium transition-colors"
-                          >
-                            {isZh ? rel.labelZh : rel.labelEn}
-                          </button>
-                        ))}
+                      {/* AP Exam Tips */}
+                      {term.examTip && (
+                        <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-950 space-y-1">
+                          <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1">
+                            <Lightbulb className="w-3 h-3 text-blue-600" />
+                            <span>{isZh ? 'AP 命题与答题要点' : 'AP Exam Tip'}</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed">{tr(term.examTip)}</p>
+                        </div>
+                      )}
+
+                      {/* Related Concepts */}
+                      {term.relatedConcepts && term.relatedConcepts.length > 0 && (
+                        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                            {isZh ? '关联知识点 (点击快速跳转):' : 'Related Concepts (Click to jump):'}
+                          </span>
+                          {term.relatedConcepts.map((rel) => (
+                            <button
+                              key={rel.termId}
+                              onClick={() => handleJumpToTerm(rel.termId, isZh ? rel.labelZh : rel.labelEn)}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-blue-100 hover:text-blue-800 text-slate-700 text-[11px] font-semibold transition-colors flex items-center gap-1 group/rel"
+                              title={`${isZh ? rel.relationZh : rel.relationEn}`}
+                            >
+                              <span>{isZh ? rel.labelZh : rel.labelEn}</span>
+                              <ArrowRight className="w-2.5 h-2.5 opacity-40 group-hover/rel:opacity-100 group-hover/rel:translate-x-0.5 transition-all text-blue-600" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Link to Graph Lab */}
+                    {term.linkedModelId && (
+                      <div className="pt-3 border-t border-slate-100">
+                        <button
+                          onClick={() => navigateToGraph(term.linkedModelId!)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white font-bold text-xs transition-all active:scale-95 group/btn"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 text-blue-600 group-hover/btn:text-white transition-colors" />
+                          <span>{isZh ? '在交互实验室中查看图像模型' : 'Open in Interactive Graph Lab'}</span>
+                          <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                        </button>
                       </div>
                     )}
                   </div>
-
-                  {/* Action Link to Graph Lab */}
-                  {term.linkedModelId && (
-                    <div className="pt-3 border-t border-slate-100">
-                      <button
-                        onClick={() => navigateToGraph(term.linkedModelId!)}
-                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white font-bold text-xs transition-all active:scale-95 group/btn"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5 text-blue-600 group-hover/btn:text-white transition-colors" />
-                        <span>{isZh ? '在交互实验室中查看图像模型' : 'Open in Interactive Graph Lab'}</span>
-                        <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* Table View */
@@ -432,6 +481,19 @@ export const ReferenceMode: React.FC = () => {
                       <td className="py-2.5 px-3 text-[11px] max-w-md leading-relaxed">
                         <p className="text-slate-800">{isZh ? term.definition.zh : term.definition.en}</p>
                         <p className="text-slate-400 italic mt-0.5">{isZh ? term.definition.en : term.definition.zh}</p>
+                        {term.relatedConcepts && term.relatedConcepts.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5 pt-1 border-t border-slate-100">
+                            {term.relatedConcepts.map((rel) => (
+                              <button
+                                key={rel.termId}
+                                onClick={() => handleJumpToTerm(rel.termId, isZh ? rel.labelZh : rel.labelEn)}
+                                className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline bg-blue-50 px-1.5 py-0.5 rounded"
+                              >
+                                {isZh ? rel.labelZh : rel.labelEn}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {term.linkedModelId ? (

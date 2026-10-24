@@ -100,6 +100,11 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     setSelectedModelId(modelId);
     if (topicId) {
       setSelectedTopicId(topicId);
+    } else {
+      const matchingTopic = AP_TOPICS.find((t) => t.graphModelId === modelId || t.id === modelId);
+      if (matchingTopic) {
+        setSelectedTopicId(matchingTopic.id);
+      }
     }
     setCurrentView('graph');
   };

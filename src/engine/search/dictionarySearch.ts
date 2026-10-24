@@ -14,6 +14,7 @@ export interface ScoredTerm {
 /**
  * Searches the economic dictionary with smart multi-field ranking.
  * Acronym/abbreviation exact and prefix matches are prioritized highest.
+ * Handles parenthetical acronyms seamlessly (e.g. "Comparative Advantage (CA)").
  */
 export function searchDictionary(query: string, options?: SearchOptions): EconomicTermDefinition[] {
   const cleanQuery = query.trim().toLowerCase();
@@ -35,6 +36,11 @@ export function searchDictionary(query: string, options?: SearchOptions): Econom
     return [...pool].sort((a, b) => a.unit - b.unit || a.en.localeCompare(b.en));
   }
 
+  // Extract stripped query and parenthetical acronym if present: e.g. "Comparative Advantage (CA)"
+  const parenMatch = cleanQuery.match(/\(([^)]+)\)/);
+  const parenAcronym = parenMatch ? parenMatch[1].trim().toLowerCase() : '';
+  const strippedQuery = cleanQuery.replace(/\([^)]*\)/g, '').trim();
+
   const scored: ScoredTerm[] = [];
 
   for (const item of pool) {
@@ -49,60 +55,66 @@ export function searchDictionary(query: string, options?: SearchOptions): Econom
     const defEn = item.definition.en.toLowerCase();
     const defZh = item.definition.zh.toLowerCase();
 
-    // 1. Exact abbreviation match: Highest Priority (Score: 1000)
-    // Supports compound abbreviations like "PPC / PPF", "MFC / MRC"
     const abbrList = abbr.split('/').map((s) => s.trim());
-    if (abbrList.includes(cleanQuery)) {
+
+    // 0. Direct ID match
+    if (item.id === cleanQuery || item.id === strippedQuery) {
+      score = 2000;
+      matchField = 'en';
+    }
+    // 1. Exact abbreviation match or parenthetical acronym match: Highest Priority (Score: 1000)
+    // Supports compound abbreviations like "PPC / PPF", "MFC / MRC", and "Comparative Advantage (CA)"
+    else if (abbrList.includes(cleanQuery) || (parenAcronym && abbrList.includes(parenAcronym))) {
       score = 1000;
       matchField = 'abbreviation';
     }
-    // 2. Abbreviation starts with query (Score: 800)
+    // 2. Abbreviation starts with query (Score: 850)
     else if (abbrList.some((s) => s.startsWith(cleanQuery))) {
-      score = 800;
+      score = 850;
       matchField = 'abbreviation';
     }
-    // 3. Abbreviation contains query (Score: 600)
-    else if (abbr.includes(cleanQuery)) {
-      score = 600;
-      matchField = 'abbreviation';
+    // 3. Exact English name match or exact alias or stripped query equals English (Score: 700)
+    else if (en === cleanQuery || en === strippedQuery || aliases.includes(cleanQuery)) {
+      score = 700;
+      matchField = en === cleanQuery || en === strippedQuery ? 'en' : 'alias';
     }
-    // 4. Exact English name match or exact alias (Score: 500)
-    else if (en === cleanQuery || aliases.includes(cleanQuery)) {
-      score = 500;
-      matchField = en === cleanQuery ? 'en' : 'alias';
-    }
-    // 5. Exact Chinese name match (Score: 500)
-    else if (zh.includes(cleanQuery) && cleanQuery.length >= 2) {
-      score = 450;
+    // 4. Exact Chinese name match or stripped query equals Chinese (Score: 700)
+    else if (zh === cleanQuery || zh === strippedQuery) {
+      score = 700;
       matchField = 'zh';
     }
-    // 6. English name starts with query (Score: 400)
-    else if (en.startsWith(cleanQuery)) {
+    // 5. English name contains query or query contains English name (Score: 600)
+    else if (en.includes(cleanQuery) || (strippedQuery && en.includes(strippedQuery)) || (cleanQuery.includes(en) && en.length >= 4)) {
+      score = 600;
+      matchField = 'en';
+    }
+    // 6. Chinese name contains query or query contains Chinese name (Score: 550)
+    else if (zh.includes(cleanQuery) || (strippedQuery && zh.includes(strippedQuery)) || (cleanQuery.includes(zh) && zh.length >= 2)) {
+      score = 550;
+      matchField = 'zh';
+    }
+    // 7. Abbreviation contains query or query contains abbreviation (Score: 500)
+    else if (abbr && (abbr.includes(cleanQuery) || (cleanQuery.length <= 10 && cleanQuery.includes(abbr) && abbr.length >= 2))) {
+      score = 500;
+      matchField = 'abbreviation';
+    }
+    // 8. English name starts with query (Score: 400)
+    else if (en.startsWith(cleanQuery) || (strippedQuery && en.startsWith(strippedQuery))) {
       score = 400;
       matchField = 'en';
     }
-    // 7. English name contains query as word or substring (Score: 300)
-    else if (en.includes(cleanQuery)) {
+    // 9. Aliases contain query (Score: 300)
+    else if (aliases.some((a) => a.includes(cleanQuery) || (strippedQuery && a.includes(strippedQuery)))) {
       score = 300;
-      matchField = 'en';
-    }
-    // 8. Aliases contain query (Score: 250)
-    else if (aliases.some((a) => a.includes(cleanQuery))) {
-      score = 250;
       matchField = 'alias';
     }
-    // 9. Chinese name contains query (Score: 200)
-    else if (zh.includes(cleanQuery)) {
+    // 10. Formula contains query (Score: 200)
+    else if (formula.includes(cleanQuery) || (strippedQuery && formula.includes(strippedQuery))) {
       score = 200;
-      matchField = 'zh';
-    }
-    // 10. Formula contains query (Score: 150)
-    else if (formula.includes(cleanQuery)) {
-      score = 150;
       matchField = 'formula';
     }
     // 11. Definition text contains query (Score: 100)
-    else if (defEn.includes(cleanQuery) || defZh.includes(cleanQuery)) {
+    else if (defEn.includes(cleanQuery) || defZh.includes(cleanQuery) || (strippedQuery && (defEn.includes(strippedQuery) || defZh.includes(strippedQuery)))) {
       score = 100;
       matchField = 'definition';
     }

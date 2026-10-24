@@ -21,7 +21,7 @@ interface GlobalSearchModalProps {
   onClose: () => void;
 }
 
-const POPULAR_ACRONYMS = ['MC', 'ATC', 'DWL', 'PED', 'Mr. DARP', 'MRP', 'MSC', 'PPC', 'NE', 'Gini'];
+const POPULAR_ACRONYMS = ['MC', 'ATC', 'DWL', 'PED', 'Mr. DARP', 'MRP', 'MSC', 'PPC', 'NE', 'Gini', 'TRPE', 'HHI', 'FOP', 'MRC'];
 
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
   const { language, tr } = useLanguage();
@@ -366,9 +366,17 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
                           onClick={() => {
                             const target = getTermById(rel.termId);
                             if (target) {
+                              if (selectedUnit && target.unit !== selectedUnit) {
+                                setSelectedUnit(undefined);
+                              }
+                              if (selectedCategory !== 'all' && target.category !== selectedCategory) {
+                                setSelectedCategory('all');
+                              }
+                              setQuery(isZh ? target.zh : target.en);
                               setActiveTermId(target.id);
                             } else {
-                              setQuery(rel.labelEn);
+                              const cleanFallback = (isZh ? rel.labelZh : rel.labelEn).replace(/\([^)]*\)/g, '').trim();
+                              setQuery(cleanFallback);
                             }
                           }}
                           className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 text-slate-700 hover:text-blue-700 transition-colors text-xs font-medium flex items-center gap-1.5 shadow-2xs group"
