@@ -158,3 +158,147 @@ export function generatePublicGoodsQuestion(): PracticeQuestion {
     }
   };
 }
+
+/**
+ * Lorenz Curve, Gini Coefficient & Income Redistribution (Topic 6.5)
+ */
+export function generateLorenzGiniQuestion(): PracticeQuestion {
+  const gini1 = randomChoice([0.28, 0.32, 0.35]);
+  const gini2 = randomChoice([0.45, 0.48, 0.52]);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `Country 1 (Gini = ${gini1}) has a MORE equal income distribution than Country 2 (Gini = ${gini2}). Implementing progressive income taxes and transfer payments will shift the Lorenz curve closer to the 45-degree line, decreasing the Gini coefficient.`,
+        zh: `国家 1（基尼系数 = ${gini1}）的收入分配比国家 2（基尼系数 = ${gini2}）更为均等。实行累进个人所得税与针对低收入群体的转移支付，将使洛伦兹曲线向 45 度完全平等线贴近，从而降低基尼系数。`
+      },
+      explanation: {
+        en: `Correct! Gini = 0 represents perfect income equality, while Gini = 1 represents total inequality. A lower Gini coefficient (${gini1} < ${gini2}) indicates greater income equality. Progressive taxes and social safety nets reduce post-tax income disparity, moving the Lorenz curve closer to the diagonal.`,
+        zh: `回答正确！基尼系数为 0 代表绝对平均，为 1 代表极端不平等。基尼系数越低（${gini1} < ${gini2}），表明国民收入分配越均等。累进所得税与转移支付能缩小税后收入差距，促使洛伦兹曲线向 45 度对角线靠拢。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Country 2 has a more equal income distribution because a higher Gini coefficient represents greater wealth creation.`,
+          zh: `国家 2 的收入分配更均等，因为更高的基尼系数代表财富创造更活跃。`
+        },
+        explanation: {
+          en: `Incorrect. Higher Gini coefficients indicate GREATER income inequality, not equality.`,
+          zh: `错误。基尼系数越高说明贫富差距和收入不平等程度越严重。`
+        }
+      },
+      {
+        text: {
+          en: `Both countries have identical income distributions because both Lorenz curves connect (0,0) and (100,100).`,
+          zh: `两国的收入分配完全相同，因为两条洛伦兹曲线都连接着 (0,0) 与 (100,100)。`
+        },
+        explanation: {
+          en: `Incorrect. All Lorenz curves connect the origin and (100,100); what matters is the curvature and area between the curve and the 45-degree line.`,
+          zh: `错误。所有洛伦兹曲线都必然穿过起点和终点；关键在于曲线向下弯曲凹陷的弧度以及与 45 度线围成的面积 A。`
+        }
+      },
+      {
+        text: {
+          en: `A sales tax on basic food items will decrease the Gini coefficient because everyone pays the same rate.`,
+          zh: `对基础食品征收消费税会降低基尼系数，因为每个人缴纳的税率相同。`
+        },
+        explanation: {
+          en: `Incorrect. General sales taxes on necessities are regressive (take a higher percentage of poor households' income), which increases income inequality.`,
+          zh: `错误。基础生活必需品消费税属于累退税（穷人税收支出占其收入比重更高），反而会加剧收入分配不公。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-gini-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 6,
+    topicCode: '6.5',
+    topicId: 'lorenz-curve-gini',
+    isDynamic: true,
+    templateId: 'dyn-lorenz-gini-calculation',
+    prompt: {
+      en: `Economists calculate income inequality for two nations: Country 1 has a Gini coefficient of ${gini1}, while Country 2 has a Gini coefficient of ${gini2}. How should policymakers interpret these coefficients, and what effect would progressive taxation have?`,
+      zh: `经济学家测算了两个国家的收入差距指标：国家 1 的基尼系数为 ${gini1}，国家 2 的基尼系数为 ${gini2}。政策制定者应当如何解读该统计指标？若实行累进所得税政策将对洛伦兹曲线产生何种影响？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Gini Coefficient = Area A / (Area A + Area B) = 2 × Area A. Range: 0 (perfect equality, Lorenz curve on 45° line) to 1 (total inequality). Progressive income taxes flatten post-tax income disparities, lowering the Gini coefficient.`,
+      zh: `基尼系数公式：Gini = 面积 A / (面积 A + 面积 B) = 2 × 面积 A。取值介于 0（绝对平均）到 1（绝对不平等）之间。累进税制与转移支付政策可使基尼系数有效下降。`
+    }
+  };
+}
+
+/**
+ * Coase Theorem & Private Bargaining for Externalities (Topic 6.2)
+ */
+export function generateCoaseTheoremQuestion(): PracticeQuestion {
+  const damageCost = randomChoice([8000, 10000, 12000]);
+  const filterCost = randomChoice([3000, 4000, 5000]);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `Under the Coase Theorem: As long as property rights are clearly assigned and transaction costs are negligible, the two parties will privately negotiate to install the filter (cost $${filterCost} < damage $${damageCost}), reaching the socially efficient outcome regardless of who owns the water rights.`,
+        zh: `根据科斯定理（Coase Theorem）：只要产权明晰且交易成本可忽略不计，双方将通过私人自愿协商安装过滤器（成本 $${filterCost} < 损害 $${damageCost}），无论水权最初归属于哪一方，都能达成社会最优效率结果。`
+      },
+      explanation: {
+        en: `Correct! The Coase Theorem states that if property rights are well-defined and transaction/bargaining costs are low, private parties will bargain to the efficient outcome. Installing the filter saves $${damageCost} for only $${filterCost}, yielding a net social surplus of $${damageCost - filterCost}.`,
+        zh: `回答正确！科斯定理核心精髓：只要产权明确界定且谈判交易成本低，当事人总能通过协商消除外部性。安装过滤器成本仅需 $${filterCost}，却能避免 $${damageCost} 的损失，创造 $${damageCost - filterCost} 的净社会收益。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Private negotiation will always fail because externalities require government command-and-control regulation.`,
+          zh: `私人协商必然失败，因为所有外部性都必须依靠政府的行政指令和强制管制。`
+        },
+        explanation: {
+          en: `Incorrect. Ronald Coase demonstrated that market bargaining can internalize externalities efficiently without government intervention under low transaction costs.`,
+          zh: `错误。罗纳德·科斯证明了在低交易成本下，市场协商本身就能自发化解外部性，无需政府强制介入。`
+        }
+      },
+      {
+        text: {
+          en: `The factory must completely shut down to eliminate all pollution, regardless of the filter cost.`,
+          zh: `化工厂必须彻底永久关闭停产以消除所有排污，无论过滤器成本是多少。`
+        },
+        explanation: {
+          en: `Incorrect. Shutting down the factory eliminates the entire economic surplus of production when a cheap filter ($${filterCost}) could solve the problem.`,
+          zh: `错误。直接强令关停化工厂会抹杀全部生产盈余，既然只需廉价的过滤器即可消除危害，停产不是最优解。`
+        }
+      },
+      {
+        text: {
+          en: `An efficient outcome is achievable only if the downstream resort owns the rights; if the factory owns the rights, excessive pollution is inevitable.`,
+          zh: `只有在下游度假村拥有水权时才能实现有效配置；若化工厂拥有水权，排污泛滥将无法避免。`
+        },
+        explanation: {
+          en: `Incorrect. Coase Theorem specifically proves that the ALLOCATION of property rights affects distribution of wealth, but NOT the final efficient resource allocation (the filter will be installed in either case).`,
+          zh: `错误。科斯定理最精彩的洞见恰恰在于：产权归属仅影响财富在双方间的分配，但绝不影响最终的效率结果（无论水权归谁，最终都会安装过滤器）。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-coase-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 6,
+    topicCode: '6.2',
+    topicId: 'negative-externalities',
+    isDynamic: true,
+    templateId: 'dyn-coase-theorem-property-rights',
+    prompt: {
+      en: `A chemical plant upstream pollutes a river, causing $${damageCost} in damages to a downstream trout resort. The chemical plant can eliminate all emissions by installing an industrial wastewater filter for $${filterCost}. According to the Coase Theorem, what will happen if transaction costs are zero?`,
+      zh: `一家上游化工厂向河流排污，给下游的鳟鱼度假度假村造成了价值 $${damageCost} 的水质破坏。该化工厂只需花费 $${filterCost} 安装一套工业污水净化过滤器即可完全消除污染。根据科斯定理（Coase Theorem），在交易成本为零的前提下，将会出现何种结果？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Coase Theorem Principle: When property rights are clearly defined and transaction costs are zero, private bargaining achieves the socially efficient resource allocation (installing the filter for $${filterCost} to save $${damageCost}), independent of the initial assignment of property rights.`,
+      zh: `科斯定理核心结论：只要产权界定清晰且交易成本为零，私人谈判就能实现社会最优的资源配置（花费 $${filterCost} 避免 $${damageCost} 损失），其效率结果与产权最初赋权给谁完全无关。`
+    }
+  };
+}

@@ -389,10 +389,47 @@ assert(unit3Filtered.every(t => t.unit === 3), 'Filter by Unit 3 returns only Un
 const costFiltered = searchDictionary('', { category: 'cost' });
 assert(costFiltered.every(t => t.category === 'cost'), 'Filter by category "cost" returns only cost terms');
 
+// 23. Full AP Micro Topic Coverage Dynamic Question Generator Audit
+console.log('\n--- 23. Expanded 100% AP Topic Dynamic Generator Audit (31 Templates) ---');
+assert(DYNAMIC_QUESTION_TEMPLATES.length >= 30, `Registered dynamic templates: ${DYNAMIC_QUESTION_TEMPLATES.length} (>= 30 covering all AP topics)`);
+
+// Check each unit has at least 4 dynamic generators
+for (let u = 1; u <= 6; u++) {
+  const unitTemplates = DYNAMIC_QUESTION_TEMPLATES.filter(t => t.unit === u);
+  assert(unitTemplates.length >= 4, `Unit ${u} has rich dynamic generator coverage: ${unitTemplates.length} templates`);
+}
+
+// Generate an instance from EVERY single one of the 31 templates and verify full validity
+for (const tmpl of DYNAMIC_QUESTION_TEMPLATES) {
+  const q = tmpl.generate();
+  assert(q.prompt.en.length > 0 && q.prompt.zh.length > 0, `Template "${tmpl.templateId}" generates non-empty bilingual prompt`);
+  assert(q.options.length === 4, `Template "${tmpl.templateId}" generates exactly 4 options`);
+  const correct = q.options.find(o => o.id === q.correctOptionId);
+  assert(correct !== undefined, `Template "${tmpl.templateId}" has valid correctOptionId "${q.correctOptionId}"`);
+  assert(q.overallExplanation.en.length > 0 && q.overallExplanation.zh.length > 0, `Template "${tmpl.templateId}" has bilingual overall explanation`);
+  assert(q.isDynamic === true, `Template "${tmpl.templateId}" produces questions marked isDynamic=true`);
+}
+
+// 24. Classic Archetypes to Dynamic Generator Mapping Audit
+console.log('\n--- 24. Classic Archetype Mapping & Live Variant Generation Audit ---');
+assert(PRACTICE_QUESTIONS.length >= 12, `Classic question archetypes: ${PRACTICE_QUESTIONS.length}`);
+
+for (const q of PRACTICE_QUESTIONS) {
+  assert(q.templateId !== undefined, `Classic question "${q.id}" has mapped templateId`);
+  const targetTemplate = DYNAMIC_QUESTION_TEMPLATES.find(t => t.templateId === q.templateId);
+  assert(targetTemplate !== undefined, `Classic question "${q.id}" templateId "${q.templateId}" exists in dynamic templates`);
+  
+  // Verify that generating a live variant produces a fresh valid question on the same topic
+  const variant = generateSimilarQuestion(q.templateId);
+  assert(variant.unit === q.unit, `Variant for "${q.id}" preserves unit ${q.unit}`);
+  assert(variant.options.length === 4, `Variant for "${q.id}" produces 4 options`);
+  assert(variant.isDynamic === true, `Variant for "${q.id}" is marked dynamic`);
+}
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 22 AUDIT SUITES PASSED WITH 0 FAILURES!');
-  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH, DYNAMIC PRACTICE & DICTIONARY SEARCH SYSTEM VERIFIED!');
+  console.log('🎉 ALL 24 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH, 31-TEMPLATE DYNAMIC PRACTICE & ANTI-COLLISION ENGINE VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);

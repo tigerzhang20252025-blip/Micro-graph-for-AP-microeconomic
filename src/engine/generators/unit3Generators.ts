@@ -262,3 +262,289 @@ export function generateShutdownDecisionQuestion(): PracticeQuestion {
     }
   };
 }
+
+/**
+ * Economies of Scale & LRATC Curve (Topic 3.3)
+ */
+export function generateLratcScaleQuestion(): PracticeQuestion {
+  const regions = [
+    {
+      type: 'economies',
+      en: 'Economies of Scale (Increasing Returns to Scale)',
+      zh: '规模经济（规模报酬递增）',
+      conditionEn: 'Long-Run Average Total Cost (LRATC) declines as output expands.',
+      conditionZh: '随着企业生产规模扩大，长期平均总成本（LRATC）持续下降。',
+      causeEn: 'labor specialization, bulk purchasing discounts, and efficient utilization of large-scale capital machinery',
+      causeZh: '劳动专业化分工、原材料大宗采购折扣以及大型自动化设备的充分利用'
+    },
+    {
+      type: 'diseconomies',
+      en: 'Diseconomies of Scale (Decreasing Returns to Scale)',
+      zh: '规模不经济（规模报酬递减）',
+      conditionEn: 'Long-Run Average Total Cost (LRATC) rises as output expands.',
+      conditionZh: '随着企业生产规模继续盲目膨胀，长期平均总成本（LRATC）反而上升。',
+      causeEn: 'management coordination breakdown, bureaucracy, communication bottlenecks, and worker alienation',
+      causeZh: '管理协调链条过长、官僚主义、沟通瓶颈与员工疏离感'
+    },
+    {
+      type: 'mes',
+      en: 'Minimum Efficient Scale (MES)',
+      zh: '最小有效规模（MES）',
+      conditionEn: 'The lowest level of output at which a firm can minimize long-run average total cost.',
+      conditionZh: '企业能够将长期平均总成本降至最低水平所对应的最小产出规模。',
+      causeEn: 'the point where economies of scale are fully exhausted',
+      causeZh: '规模经济潜力被完全释放的临界点'
+    }
+  ];
+
+  const region = randomChoice(regions);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `${region.en}: characterized by ${region.conditionEn}`,
+        zh: `${region.zh}：其核心特征为“${region.conditionZh}”`
+      },
+      explanation: {
+        en: `Correct! ${region.en} occurs when ${region.conditionEn} A major underlying economic cause is ${region.causeEn}.`,
+        zh: `回答正确！${region.zh}正是指${region.conditionZh}其主要的经济成因包括${region.causeZh}。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Law of Diminishing Marginal Returns: short-run marginal product declines because labor is fixed.`,
+          zh: `边际报酬递减规律：短期内由于劳动力固定导致边际产量下降。`
+        },
+        explanation: {
+          en: `Incorrect. The Law of Diminishing Marginal Returns applies strictly to the SHORT RUN where at least one factor is fixed; Economies of scale is a LONG-RUN concept where all inputs are variable.`,
+          zh: `错误。边际报酬递减规律属于短期成本范畴（存在固定投入要素）；而规模经济属于长期（所有要素皆可调整）概念，不要混淆。`
+        }
+      },
+      {
+        text: {
+          en: `Constant returns to scale: Total Revenue equals Total Cost in both short run and long run.`,
+          zh: `规模报酬不变：无论短期还是长期，总收益必定等于总成本。`
+        },
+        explanation: {
+          en: `Incorrect. Constant returns to scale means LRATC remains flat as output changes, not that revenue equals cost.`,
+          zh: `错误。规模报酬不变指的是产量扩张时 LRATC 保持平直不变，并不等同于收益等于成本。`
+        }
+      },
+      {
+        text: {
+          en: `Shutdown rule: Average Fixed Cost exceeds Marginal Revenue.`,
+          zh: `停产规则：平均固定成本超过了边际收益。`
+        },
+        explanation: {
+          en: `Incorrect. Shutdown decisions depend on Price vs AVC in the short run, not AFC.`,
+          zh: `错误。停产决策取决于价格与 AVC 的比较，与 AFC 无关。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-lratc-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 3,
+    topicCode: '3.3',
+    topicId: 'lratc-economies-of-scale',
+    isDynamic: true,
+    templateId: 'dyn-lratc-scale-economies',
+    prompt: {
+      en: `A manufacturing firm plans to build a new factory. Over the long-run planning horizon where all inputs are variable, economists observe the phenomenon of "${region.en}". How is this long-run cost behavior correctly defined?`,
+      zh: `某制造企业正规划新建生产基地。在所有要素均可调整的长期规划视界内，经济学家观察到了“${region.zh}”现象。关于该长期成本特征的正确经济学表述是：`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `In the long run, firms experience: 1) Economies of scale (downward-sloping LRATC); 2) Minimum Efficient Scale (MES, lowest output where min LRATC is reached); 3) Constant returns to scale (flat LRATC); 4) Diseconomies of scale (upward-sloping LRATC due to managerial coordination failure).`,
+      zh: `长期平均成本曲线（LRATC）三大阶段：1) 规模经济阶段（LRATC 单调下降）；2) 最小有效规模 MES（达到最低单位成本的最早产量）；3) 规模报酬不变阶段（LRATC 平直）；4) 规模不经济阶段（组织协调低效导致 LRATC 上扬）。`
+    }
+  };
+}
+
+/**
+ * Discrete Cost Schedule Table Calculations (MC, ATC, AVC, TFC) (Topic 3.2)
+ */
+export function generateDiscreteCostScheduleQuestion(): PracticeQuestion {
+  const tfc = randomChoice([30, 40, 50, 60]);
+  const mc1 = randomChoice([10, 15, 20]);
+  const mc2 = mc1 - randomChoice([2, 4]); // diminishing returns starts after unit 2
+  const mc3 = mc2 + randomChoice([5, 8]);
+  const mc4 = mc3 + randomChoice([8, 12]);
+
+  const tc0 = tfc;
+  const tc1 = tc0 + mc1;
+  const tc2 = tc1 + mc2;
+  const tc3 = tc2 + mc3;
+  const tc4 = tc3 + mc4;
+
+  const targetQ = randomChoice([2, 3, 4]);
+  let targetMC = 0;
+  let targetATC = 0;
+  let prevTC = 0;
+  let currTC = 0;
+
+  if (targetQ === 2) {
+    targetMC = mc2;
+    currTC = tc2;
+    prevTC = tc1;
+    targetATC = Number((tc2 / 2).toFixed(1));
+  } else if (targetQ === 3) {
+    targetMC = mc3;
+    currTC = tc3;
+    prevTC = tc2;
+    targetATC = Number((tc3 / 3).toFixed(1));
+  } else {
+    targetMC = mc4;
+    currTC = tc4;
+    prevTC = tc3;
+    targetATC = Number((tc4 / 4).toFixed(1));
+  }
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `Marginal Cost (MC) = $${targetMC}; Average Total Cost (ATC) = $${targetATC}`,
+        zh: `边际成本 MC = $${targetMC}；平均总成本 ATC = $${targetATC}`
+      },
+      explanation: {
+        en: `Correct! MC at Q=${targetQ} is ΔTC/ΔQ = ($${currTC} - $${prevTC}) / 1 = $${targetMC}. ATC at Q=${targetQ} is TC/Q = $${currTC} / ${targetQ} = $${targetATC}.`,
+        zh: `回答正确！第 ${targetQ} 件的 MC = ΔTC / ΔQ = ($${currTC} - $${prevTC}) / 1 = $${targetMC}。该产量下的 ATC = TC / Q = $${currTC} / ${targetQ} = $${targetATC}。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Marginal Cost (MC) = $${targetATC}; Average Total Cost (ATC) = $${targetMC}`,
+          zh: `边际成本 MC = $${targetATC}；平均总成本 ATC = $${targetMC}`
+        },
+        explanation: {
+          en: `Incorrect. Inverted the definitions of MC (incremental cost) and ATC (average cost per unit).`,
+          zh: `错误。颠倒了边际成本（增量）与平均总成本（总额除以产量）的概念。`
+        }
+      },
+      {
+        text: {
+          en: `Marginal Cost (MC) = $${currTC}; Average Total Cost (ATC) = $${tfc}`,
+          zh: `边际成本 MC = $${currTC}；平均总成本 ATC = $${tfc}`
+        },
+        explanation: {
+          en: `Incorrect. Confused total cost with marginal cost, and fixed cost with average total cost.`,
+          zh: `错误。把总成本直接当成了边际成本，把固定成本当成了平均总成本。`
+        }
+      },
+      {
+        text: {
+          en: `Marginal Cost (MC) = $${targetMC}; Average Variable Cost (AVC) = $${targetATC}`,
+          zh: `边际成本 MC = $${targetMC}；平均可变成本 AVC = $${targetATC}`
+        },
+        explanation: {
+          en: `Incorrect. $${targetATC} is ATC, which includes fixed costs. AVC is (TC - TFC) / Q, which is strictly lower than ATC.`,
+          zh: `错误。$${targetATC} 包含固定成本属于 ATC。AVC 必须剔除固定成本，数值必然小于 ATC。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-discrete-cost-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 3,
+    topicCode: '3.2',
+    topicId: 'cost-curves-short-run',
+    isDynamic: true,
+    templateId: 'dyn-discrete-cost-schedule',
+    prompt: {
+      en: `A firm's short-run cost schedule is: Q=0: TC=$${tc0}; Q=1: TC=$${tc1}; Q=2: TC=$${tc2}; Q=3: TC=$${tc3}; Q=4: TC=$${tc4}. What is the Marginal Cost (MC) and Average Total Cost (ATC) of producing the ${targetQ}th unit?`,
+      zh: `某企业的短期总成本序列为：Q=0: TC=$${tc0}；Q=1: TC=$${tc1}；Q=2: TC=$${tc2}；Q=3: TC=$${tc3}；Q=4: TC=$${tc4}。求生产第 ${targetQ} 个单位产品时的边际成本（MC）以及该产量下的平均总成本（ATC）：`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Formulas: MC = ΔTC / ΔQ. ATC = TC / Q. Notice that at Q=0, TC = TFC = $${tfc}.`,
+      zh: `公式解析：MC = ΔTC / ΔQ。ATC = TC / Q。注意当 Q=0 时，全部成本为固定成本 TFC = $${tfc}。`
+    }
+  };
+}
+
+/**
+ * Perfect Competition Long-Run Equilibrium Entry/Exit Adjustment (Topic 3.7)
+ */
+export function generatePerfectCompLongRunAdjustmentQuestion(): PracticeQuestion {
+  const isProfit = Math.random() > 0.5;
+  const minAtc = randomInt(20, 35);
+  const marketPrice = isProfit ? minAtc + randomChoice([5, 8, 12]) : minAtc - randomChoice([4, 6]);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: isProfit
+          ? `In the short run, firms earn positive economic profits. In the long run, new firms enter the industry, shifting market supply rightward, driving price down until P = min ATC (zero economic profit).`
+          : `In the short run, firms incur economic losses. In the long run, existing firms exit the industry, shifting market supply leftward, driving price up until P = min ATC (zero economic profit).`,
+        zh: isProfit
+          ? `短期内在位企业赚取超额经济利润。在长期中，新企业不断涌入该行业，导致市场供给曲线右移，迫使市场价格回落直至 P = min ATC（经济利润回归为零/正常利润）。`
+          : `短期内企业遭受经济亏损。在长期中，部分企业退出该行业，导致市场供给曲线左移，推动市场价格回升直至 P = min ATC（经济利润回归为零/正常利润）。`
+      },
+      explanation: {
+        en: `Correct! Under free entry and exit in perfect competition, short-run economic profits attract entrants (shifting Supply right, lowering P to min ATC). Short-run losses induce exits (shifting Supply left, raising P to min ATC). Long-run equilibrium guarantees P = MC = min ATC.`,
+        zh: `回答正确！完全竞争市场的自由进退机制：短期超额利润吸引新企业进入（市场供给右移，降价至 min ATC）；短期亏损促使在位企业退出（市场供给左移，涨价至 min ATC）。长期必然稳定在零经济利润（P = min ATC）。`
+      }
+    },
+    [
+      {
+        text: {
+          en: isProfit
+            ? `Existing firms will raise their prices above $${marketPrice} to maximize profits further.`
+            : `Firms will collectively decide to lower supply prices to sell more volume.`,
+          zh: isProfit
+            ? `在位企业将主动把价格抬高到 $${marketPrice} 之上以追求更大利润。`
+            : `在位企业将联合降价以图多销。`
+        },
+        explanation: {
+          en: `Incorrect. Individual firms in perfect competition are price takers with zero market power.`,
+          zh: `错误。完全竞争厂商无任何市场定价权，只能被动接受市场价格。`
+        }
+      },
+      {
+        text: {
+          en: `Economic profits or losses will persist permanently in the long run because existing firms hold patents.`,
+          zh: `超额利润或亏损在长期中将永久持续，因为在位企业拥有排他性专利。`
+        },
+        explanation: {
+          en: `Incorrect. Perfect competition assumes identical products and zero barriers to entry/exit.`,
+          zh: `错误。完全竞争市场假设商品完全同质且无任何进出壁垒，专利属于垄断特征。`
+        }
+      },
+      {
+        text: {
+          en: `Long-run market price will permanently fall to zero due to continuous influx of firms.`,
+          zh: `长期市场价格将因无限企业进入而最终彻底跌至零。`
+        },
+        explanation: {
+          en: `Incorrect. Entry halts once economic profits hit zero at P = min ATC.`,
+          zh: `错误。一旦价格降到 min ATC，经济利润为零，新企业的进入冲动即刻停止。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-pc-longrun-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 3,
+    topicCode: '3.7',
+    topicId: 'perfect-competition-side-by-side',
+    isDynamic: true,
+    templateId: 'dyn-perfect-competition-long-run',
+    prompt: {
+      en: `A constant-cost perfectly competitive industry is composed of identical firms. Each firm has min ATC = $${minAtc}. The current short-run market equilibrium price is P = $${marketPrice}. What process occurs as the industry transitions from the short run to the long-run equilibrium?`,
+      zh: `某成本不变的完全竞争行业由众多同质企业构成。每家企业的平均总成本最低点 min ATC = $${minAtc}。当前短期市场均衡售价为 P = $${marketPrice}。从短期向长期均衡的动态调整过程中，会发生什么？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Long-Run Competitive Equilibrium Condition: P = MR = MC = min ATC. Zero economic profit (normal profit) is achieved, satisfying both Productive Efficiency (P = min ATC) and Allocative Efficiency (P = MC).`,
+      zh: `完全竞争长期均衡定理：P = MR = MC = min ATC。此时企业获得正常利润（经济利润为零），同时实现生产效率（P = min ATC）与配置效率（P = MC）。`
+    }
+  };
+}

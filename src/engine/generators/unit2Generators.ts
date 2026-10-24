@@ -295,3 +295,386 @@ export function generatePriceControlQuestion(): PracticeQuestion {
     }
   };
 }
+
+/**
+ * Cross-Price Elasticity & Income Elasticity (Topic 2.4 / 2.5)
+ */
+export function generateCrossIncomeElasticityQuestion(): PracticeQuestion {
+  const isCross = Math.random() > 0.5;
+
+  if (isCross) {
+    // Cross-Price Elasticity: XED = %ΔQ_A / %ΔP_B
+    const goodPairs = [
+      {
+        goodA: { en: 'Coffee', zh: '咖啡' },
+        goodB: { en: 'Tea', zh: '茶叶' },
+        relation: 'substitute',
+        relEn: 'substitutes (positive XED)',
+        relZh: '替代品（XED 为正）'
+      },
+      {
+        goodA: { en: 'Hot Dogs', zh: '热狗' },
+        goodB: { en: 'Hot Dog Buns', zh: '热狗面包' },
+        relation: 'complement',
+        relEn: 'complements (negative XED)',
+        relZh: '互补品（XED 为负）'
+      },
+      {
+        goodA: { en: 'Printers', zh: '打印机' },
+        goodB: { en: 'Ink Cartridges', zh: '墨盒' },
+        relation: 'complement',
+        relEn: 'complements (negative XED)',
+        relZh: '互补品（XED 为负）'
+      },
+      {
+        goodA: { en: 'Movie Tickets', zh: '电影票' },
+        goodB: { en: 'Streaming Subscriptions', zh: '流媒体会员' },
+        relation: 'substitute',
+        relEn: 'substitutes (positive XED)',
+        relZh: '替代品（XED 为正）'
+      }
+    ];
+    const pair = randomChoice(goodPairs);
+    const deltaPB = randomChoice([10, 15, 20]);
+    // If substitute: +deltaPB causes +deltaQA; if complement: +deltaPB causes -deltaQA
+    const xedCoeff = pair.relation === 'substitute' ? randomChoice([0.5, 0.8, 1.2, 1.5]) : -randomChoice([0.5, 0.8, 1.2, 1.5]);
+    const deltaQA = Math.round(deltaPB * xedCoeff);
+
+    const { options, correctOptionId } = buildFourOptions(
+      {
+        text: {
+          en: `XED = ${xedCoeff > 0 ? '+' : ''}${xedCoeff.toFixed(2)}; the goods are ${pair.relEn}.`,
+          zh: `交叉价格弹性 XED = ${xedCoeff > 0 ? '+' : ''}${xedCoeff.toFixed(2)}；两种物品属于${pair.relZh}。`
+        },
+        explanation: {
+          en: `Correct! XED = %ΔQuantity demanded of Good A / %ΔPrice of Good B = (${deltaQA}%) / (+${deltaPB}%) = ${xedCoeff.toFixed(2)}. Positive XED indicates substitutes; negative XED indicates complements.`,
+          zh: `回答正确！交叉弹性公式 XED = %ΔQ_A / %ΔP_B = (${deltaQA}%) / (+${deltaPB}%) = ${xedCoeff.toFixed(2)}。XED > 0 为替代品，XED < 0 为互补品。`
+        }
+      },
+      [
+        {
+          text: {
+            en: `XED = ${(-xedCoeff).toFixed(2)}; the goods are ${pair.relation === 'substitute' ? 'complements' : 'substitutes'}.`,
+            zh: `交叉价格弹性 XED = ${(-xedCoeff).toFixed(2)}；两种物品属于${pair.relation === 'substitute' ? '互补品' : '替代品'}。`
+          },
+          explanation: {
+            en: `Incorrect. The sign of the elasticity was reversed.`,
+            zh: `错误。弹性的正负符号计算颠倒了。`
+          }
+        },
+        {
+          text: {
+            en: `XED = ${Number((1 / xedCoeff).toFixed(2))}; the goods are normal goods.`,
+            zh: `交叉价格弹性 XED = ${Number((1 / xedCoeff).toFixed(2))}；两种物品属于正常品。`
+          },
+          explanation: {
+            en: `Incorrect. Inverted the ratio (%ΔP / %ΔQ) and confused cross-price elasticity with income elasticity.`,
+            zh: `错误。颠倒了分子与分母（算成了 %ΔP / %ΔQ），并将交叉弹性混淆为了收入弹性概念。`
+          }
+        },
+        {
+          text: {
+            en: `XED = 0; the goods are unrelated independent goods.`,
+            zh: `交叉价格弹性 XED = 0；两种物品完全独立无关。`
+          },
+          explanation: {
+            en: `Incorrect. A non-zero change in demand in response to price implies they are economically related.`,
+            zh: `错误。商品 B 价格变动明显引起了商品 A 需求量的变化，两者绝非无关独立品。`
+          }
+        }
+      ]
+    );
+
+    return {
+      id: `dyn-xed-${Date.now()}-${randomInt(100, 999)}`,
+      unit: 2,
+      topicCode: '2.4',
+      topicId: 'price-elasticity-demand',
+      isDynamic: true,
+      templateId: 'dyn-elasticity-cross-income',
+      prompt: {
+        en: `When the price of ${pair.goodB.en} increases by ${deltaPB}%, the quantity demanded of ${pair.goodA.en} changes by ${deltaQA > 0 ? '+' : ''}${deltaQA}%. What is the cross-price elasticity of demand (XED), and what is the relationship between the two goods?`,
+        zh: `当${pair.goodB.zh}的价格上涨 ${deltaPB}% 时，消费者对${pair.goodA.zh}的需求量变动了 ${deltaQA > 0 ? '+' : ''}${deltaQA}%。求该交叉价格弹性（XED），并判断两种商品之间的经济关系：`
+      },
+      options,
+      correctOptionId,
+      overallExplanation: {
+        en: `Cross-Price Elasticity of Demand: XED = (%ΔQ_A) / (%ΔP_B). Positive XED indicates substitutes (price of one good and demand for another move in the same direction). Negative XED indicates complements.`,
+        zh: `需求交叉价格弹性 XED = (%ΔQ_A) / (%ΔP_B)。XED 为正表示两者为替代品（同向变动）；XED 为负表示两者为互补品（反向变动）。`
+      }
+    };
+  } else {
+    // Income Elasticity: YED = %ΔQ / %ΔIncome
+    const deltaI = randomChoice([5, 10, 15, 20]);
+    const isNormal = Math.random() > 0.4;
+    const yed = isNormal ? randomChoice([0.5, 0.8, 1.2, 1.8]) : -randomChoice([0.4, 0.7, 1.2]);
+    const deltaQ = Math.round(deltaI * yed);
+
+    const goodName = isNormal
+      ? (yed > 1 ? { en: 'Fine Dining', zh: '高档精致餐饮' } : { en: 'Fresh Produce', zh: '生鲜水果' })
+      : { en: 'Instant Noodles', zh: '平价方便面' };
+
+    const { options, correctOptionId } = buildFourOptions(
+      {
+        text: {
+          en: `YED = ${yed > 0 ? '+' : ''}${yed.toFixed(2)}; the good is ${isNormal ? (yed > 1 ? 'a luxury normal good' : 'a normal necessity') : 'an inferior good'}.`,
+          zh: `收入弹性 YED = ${yed > 0 ? '+' : ''}${yed.toFixed(2)}；该物品属于${isNormal ? (yed > 1 ? '奢侈正常品' : '必需正常品') : '劣等品（低档品）'}。`
+        },
+        explanation: {
+          en: `Correct! YED = %ΔQ / %ΔIncome = (${deltaQ}%) / (+${deltaI}%) = ${yed.toFixed(2)}. YED > 0 defines a normal good; YED < 0 defines an inferior good.`,
+          zh: `回答正确！收入弹性 YED = %ΔQ / %Δ收入 = (${deltaQ}%) / (+${deltaI}%) = ${yed.toFixed(2)}。YED > 0 为正常品，YED < 0 为劣等品。`
+        }
+      },
+      [
+        {
+          text: {
+            en: `YED = ${(-yed).toFixed(2)}; the good is ${isNormal ? 'an inferior good' : 'a normal good'}.`,
+            zh: `收入弹性 YED = ${(-yed).toFixed(2)}；该物品属于${isNormal ? '劣等品' : '正常品'}。`
+          },
+          explanation: {
+            en: `Incorrect. Inverted the positive/negative sign of the calculation.`,
+            zh: `错误。正负符号计算反了。`
+          }
+        },
+        {
+          text: {
+            en: `YED = ${Number((1 / yed).toFixed(2))}; the good has elastic supply.`,
+            zh: `收入弹性 YED = ${Number((1 / yed).toFixed(2))}；该物品供给富有弹性。`
+          },
+          explanation: {
+            en: `Incorrect. Inverted the formula (%ΔIncome / %ΔQ) and confused income elasticity with supply elasticity.`,
+            zh: `错误。颠倒了公式且将消费者收入弹性混淆成了供给弹性。`
+          }
+        },
+        {
+          text: {
+            en: `YED = 1.0; the good is perfectly price elastic.`,
+            zh: `收入弹性 YED = 1.0；该物品具有完全价格弹性。`
+          },
+          explanation: {
+            en: `Incorrect. This confuses income elasticity with price elasticity of demand.`,
+            zh: `错误。将需求收入弹性与需求价格弹性混淆。`
+          }
+        }
+      ]
+    );
+
+    return {
+      id: `dyn-yed-${Date.now()}-${randomInt(100, 999)}`,
+      unit: 2,
+      topicCode: '2.5',
+      topicId: 'price-elasticity-demand',
+      isDynamic: true,
+      templateId: 'dyn-elasticity-cross-income',
+      prompt: {
+        en: `Consumer household incomes increase across an economy by ${deltaI}%. In response, total purchases of ${goodName.en} change by ${deltaQ > 0 ? '+' : ''}${deltaQ}%. What is the income elasticity of demand (YED) and classification of this good?`,
+        zh: `某国居民家庭可支配收入普遍上涨了 ${deltaI}%。随之而来的是消费者对${goodName.zh}的总购买量变动了 ${deltaQ > 0 ? '+' : ''}${deltaQ}%。求需求收入弹性（YED）及该物品的属性类别：`
+      },
+      options,
+      correctOptionId,
+      overallExplanation: {
+        en: `Income Elasticity of Demand: YED = (%ΔQuantity Demanded) / (%ΔIncome). If YED > 0, it is a normal good. If YED < 0, it is an inferior good.`,
+        zh: `需求收入弹性公式：YED = (%ΔQ) / (%ΔIncome)。YED > 0 为正常品；YED < 0 为劣等品（随收入增长而购买量减少）。`
+      }
+    };
+  }
+}
+
+/**
+ * International Trade & Tariffs Welfare Deadweight Loss (Topic 2.9)
+ */
+export function generateTariffWelfareQuestion(): PracticeQuestion {
+  const worldP = randomInt(20, 40);
+  const tariff = randomChoice([5, 10, 15]);
+  const domesticP = worldP + tariff;
+
+  // Free trade quantities: Qd_free > Qs_free
+  const qsFree = randomInt(10, 30);
+  const qdFree = qsFree + randomChoice([50, 60, 80]);
+  const importsFree = qdFree - qsFree;
+
+  // With tariff: supply expands by dQs, demand shrinks by dQd
+  const dQs = randomChoice([10, 15]);
+  const dQd = randomChoice([10, 15]);
+  const qsTariff = qsFree + dQs;
+  const qdTariff = qdFree - dQd;
+  const importsTariff = qdTariff - qsTariff;
+
+  // Deadweight loss = 1/2 * tariff * (dQs + dQd)
+  const dwl = 0.5 * tariff * (dQs + dQd);
+  const tariffRevenue = tariff * importsTariff;
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `Imports decrease from ${importsFree} to ${importsTariff} units; Government Tariff Revenue is $${tariffRevenue}; Deadweight Loss is $${dwl}.`,
+        zh: `进口量由 ${importsFree} 减少至 ${importsTariff} 单位；政府关税收入为 $${tariffRevenue}；社会无谓损失为 $${dwl}。`
+      },
+      explanation: {
+        en: `Correct! Imports under tariff = ${qdTariff} - ${qsTariff} = ${importsTariff}. Tariff Revenue = Tariff ($${tariff}) × Imports (${importsTariff}) = $${tariffRevenue}. Deadweight Loss = 1/2 × Tariff × (production distortion ${dQs} + consumption distortion ${dQd}) = 0.5 × ${tariff} × ${dQs + dQd} = $${dwl}.`,
+        zh: `回答正确！关税下进口量 = ${qdTariff} - ${qsTariff} = ${importsTariff}。政府关税收入 = 单位关税（$${tariff}）× 进口量（${importsTariff}）= $${tariffRevenue}。无谓损失 = 两个三角形面积之和 = 0.5 × ${tariff} × (${dQs} + ${dQd}) = $${dwl}。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Imports decrease to ${importsTariff} units, but there is zero deadweight loss because domestic producers gained surplus.`,
+          zh: `进口量降至 ${importsTariff} 单位，但无谓损失为零，因为国内生产者获得了更多剩余。`
+        },
+        explanation: {
+          en: `Incorrect. The expansion of domestic producer surplus does not offset the net loss in consumer surplus and efficiency distortions.`,
+          zh: `错误。虽然国内厂商剩余增加，但消费者剩余的大幅萎缩与生产消费双重扭曲依然会造成两块净无谓损失三角形。`
+        }
+      },
+      {
+        text: {
+          en: `Government Tariff Revenue is $${tariff * importsFree}; Deadweight Loss is $${dwl * 2}.`,
+          zh: `政府关税收入为 $${tariff * importsFree}；无谓损失为 $${dwl * 2}。`
+        },
+        explanation: {
+          en: `Incorrect. Tariff revenue is collected only on actual imported units after the tariff (${importsTariff}), not the free-trade volume.`,
+          zh: `错误。政府关税收入只能基于征税后实际发生的进口量（${importsTariff}）计收，而非自由贸易时的进口量。`
+        }
+      },
+      {
+        text: {
+          en: `Domestic consumer surplus increases because domestic manufacturers employ more workers.`,
+          zh: `国内消费者剩余增加，因为国内制造业雇佣了更多工人。`
+        },
+        explanation: {
+          en: `Incorrect. Higher domestic prices ($${domesticP} vs $${worldP}) strictly reduce consumer surplus.`,
+          zh: `错误。国内购买价格上涨（由 $${worldP} 升至 $${domesticP}），消费者剩余必然减少。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-tariff-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 2,
+    topicCode: '2.9',
+    topicId: 'international-trade-tariffs',
+    isDynamic: true,
+    templateId: 'dyn-tariff-welfare-calculation',
+    prompt: {
+      en: `A small open economy faces a world price of $${worldP} for steel. At $${worldP}, domestic producers supply ${qsFree} tons and domestic buyers demand ${qdFree} tons. The government imposes a $${tariff} per-ton tariff, raising the domestic price to $${domesticP}. At $${domesticP}, domestic supply expands to ${qsTariff} tons and domestic demand drops to ${qdTariff} tons. What are the welfare effects of this tariff?`,
+      zh: `某国作为小型开放经济体，面临的世界钢材售价为每吨 $${worldP}。在 $${worldP} 下，国内钢厂仅供给 ${qsFree} 吨，而国内总需求达 ${qdFree} 吨。政府随后开征每吨 $${tariff} 的进口关税，国内售价涨至 $${domesticP}。在 $${domesticP} 下，国内钢厂增产至 ${qsTariff} 吨，国内需求压缩至 ${qdTariff} 吨。该关税政策的福利效应为：`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `A tariff raises domestic price above world price, reducing imports to (Qd - Qs). It generates government tariff revenue (Tariff × Imports) and creates two deadweight loss triangles: production inefficiency and consumption distortion.`,
+      zh: `关税将国内价格抬高至世界价格之上，使进口量萎缩至 (Qd - Qs)。关税产生政府财政收入（单位关税 × 进口量），并产生两个无谓损失三角形（生产低效扭曲与消费抑制扭曲）。`
+    }
+  };
+}
+
+/**
+ * Simultaneous Shifts in Demand and Supply (Topic 2.7)
+ */
+export function generateSimultaneousShiftsQuestion(): PracticeQuestion {
+  const shiftScenarios = [
+    {
+      shiftEn: 'Demand increases (shifts right) and Supply decreases (shifts left)',
+      shiftZh: '需求增加（需求曲线右移），同时供给减少（供给曲线左移）',
+      resultEn: 'Equilibrium Price unambiguously INCREASES; Equilibrium Quantity is INDETERMINATE (ambiguous).',
+      resultZh: '均衡价格必然上涨（P* 上涨）；均衡数量变动不确定（Q* 无法仅凭方向判定）。',
+      distractor1En: 'Equilibrium Quantity increases; Equilibrium Price is indeterminate.',
+      distractor1Zh: '均衡数量必然增加；均衡价格变动不确定。',
+      distractor2En: 'Both Equilibrium Price and Equilibrium Quantity increase unambiguously.',
+      distractor2Zh: '均衡价格与均衡数量均必然同时增加。'
+    },
+    {
+      shiftEn: 'Demand decreases (shifts left) and Supply increases (shifts right)',
+      shiftZh: '需求减少（需求曲线左移），同时供给增加（供给曲线右移）',
+      resultEn: 'Equilibrium Price unambiguously DECREASES; Equilibrium Quantity is INDETERMINATE (ambiguous).',
+      resultZh: '均衡价格必然下跌（P* 下跌）；均衡数量变动不确定（Q* 无法仅凭方向判定）。',
+      distractor1En: 'Equilibrium Quantity decreases; Equilibrium Price is indeterminate.',
+      distractor1Zh: '均衡数量必然减少；均衡价格变动不确定。',
+      distractor2En: 'Both Equilibrium Price and Equilibrium Quantity decrease unambiguously.',
+      distractor2Zh: '均衡价格与均衡数量均必然同时减少。'
+    },
+    {
+      shiftEn: 'Both Demand and Supply increase simultaneously (both shift right)',
+      shiftZh: '需求与供给同时增加（两条曲线均向右平移）',
+      resultEn: 'Equilibrium Quantity unambiguously INCREASES; Equilibrium Price is INDETERMINATE (ambiguous).',
+      resultZh: '均衡数量必然增加（Q* 增加）；均衡价格变动不确定（P* 无法仅凭方向判定）。',
+      distractor1En: 'Equilibrium Price increases; Equilibrium Quantity is indeterminate.',
+      distractor1Zh: '均衡价格必然上涨；均衡数量变动不确定。',
+      distractor2En: 'Both Equilibrium Price and Equilibrium Quantity increase unambiguously.',
+      distractor2Zh: '均衡价格与均衡数量均必然同时增加。'
+    },
+    {
+      shiftEn: 'Both Demand and Supply decrease simultaneously (both shift left)',
+      shiftZh: '需求与供给同时减少（两条曲线均向左平移）',
+      resultEn: 'Equilibrium Quantity unambiguously DECREASES; Equilibrium Price is INDETERMINATE (ambiguous).',
+      resultZh: '均衡数量必然减少（Q* 减少）；均衡价格变动不确定（P* 无法仅凭方向判定）。',
+      distractor1En: 'Equilibrium Price decreases; Equilibrium Quantity is indeterminate.',
+      distractor1Zh: '均衡价格必然下跌；均衡数量变动不确定。',
+      distractor2En: 'Both Equilibrium Price and Equilibrium Quantity decrease unambiguously.',
+      distractor2Zh: '均衡价格与均衡数量均必然同时减少。'
+    }
+  ];
+
+  const scenario = randomChoice(shiftScenarios);
+  const market = randomChoice([
+    { en: 'Electric Vehicles', zh: '电动汽车' },
+    { en: 'Specialty Coffee', zh: '精品咖啡' },
+    { en: 'Commercial Airline Flights', zh: '民航客运' }
+  ]);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: { en: scenario.resultEn, zh: scenario.resultZh },
+      explanation: {
+        en: `Correct! With double shifts, one variable (P or Q) moves unambiguously, while the other is indeterminate unless the relative magnitudes of the shifts are specified.`,
+        zh: `回答正确！当供求双向平移时，其中一个变量（P 或 Q）的方向必定确定，而另一个变量在未知平移具体幅度时必然是不确定的（Indeterminate）。`
+      }
+    },
+    [
+      {
+        text: { en: scenario.distractor1En, zh: scenario.distractor1Zh },
+        explanation: {
+          en: `Incorrect. Inverts which variable is certain versus indeterminate.`,
+          zh: `错误。颠倒了确定变动与不确定变动的变量。`
+        }
+      },
+      {
+        text: { en: scenario.distractor2En, zh: scenario.distractor2Zh },
+        explanation: {
+          en: `Incorrect. Assumes both variables can be determined without knowing relative shift magnitudes.`,
+          zh: `错误。在未知两条曲线相对平移幅度大小时，不可能同时断定两者的具体增减。`
+        }
+      },
+      {
+        text: {
+          en: `The market remains in original equilibrium because shifts in demand cancel out shifts in supply.`,
+          zh: `市场将保持原均衡不变，因为需求的平移与供给的平移会完全相互抵消。`
+        },
+        explanation: {
+          en: `Incorrect. Shifts do not cancel out; market forces establish a new equilibrium.`,
+          zh: `错误。两个外生冲击不会凭空抵消，市场必定会形成新的均衡点。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-double-shift-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 2,
+    topicCode: '2.7',
+    topicId: 'market-equilibrium-welfare',
+    isDynamic: true,
+    templateId: 'dyn-simultaneous-shifts',
+    prompt: {
+      en: `In the market for ${market.en}, suppose ${scenario.shiftEn}. Without knowing the relative magnitude of the two shifts, what can be definitively concluded about the new equilibrium price and quantity?`,
+      zh: `在${market.zh}市场上，假定${scenario.shiftZh}。在未知两次平移相对具体幅度大小的前提下，关于新的市场均衡价格（P*）与均衡数量（Q*），可以得出什么确切结论？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `AP Micro Indeterminacy Rule: When D and S shift simultaneously in opposite directions, Price change is certain, Quantity is indeterminate. When D and S shift in the same direction, Quantity change is certain, Price is indeterminate.`,
+      zh: `AP 微观双平移定理口诀：同向平移量确定（D与S同增/同减，Q* 必定增加/减少，P* 不确定）；反向平移价确定（D增S减/D减S增，P* 必定上涨/下跌，Q* 不确定）。`
+    }
+  };
+}

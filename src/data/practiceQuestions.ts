@@ -31,6 +31,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 1,
     topicCode: '1.3',
     topicId: 'ppc-model',
+    templateId: 'dyn-ppc-opp-cost',
     prompt: {
       en: 'An economy produces only two goods: Solar Panels and Wind Turbines. Moving from production combination (10 Solar Panels, 50 Wind Turbines) to (20 Solar Panels, 35 Wind Turbines), what is the opportunity cost per additional Solar Panel produced?',
       zh: '某经济体仅生产两种物品：太阳能板与风力发电机。当生产组合由（10 块太阳能板，50 台风机）变为（20 块太阳能板，35 台风机）时，每多生产 1 块太阳能板的机会成本是多少？'
@@ -84,6 +85,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 1,
     topicCode: '1.4',
     topicId: 'comparative-advantage',
+    templateId: 'dyn-comparative-trade',
     prompt: {
       en: 'Country Alpha can produce 1 Car or 2 tons of Grain with one unit of labor. Country Beta can produce 1 Car or 4 tons of Grain with one unit of labor. Which of the following terms of trade will be mutually beneficial to both nations?',
       zh: '阿尔法国家投入 1 单位劳动力可生产 1 辆汽车或 2 吨粮食；贝塔国家投入 1 单位劳动力可生产 1 辆汽车或 4 吨粮食。下列哪一项贸易比率能够使两国互利共赢？'
@@ -133,6 +135,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 1,
     topicCode: '1.6',
     topicId: 'marginal-analysis-utility',
+    templateId: 'dyn-utility-equi-marginal',
     prompt: {
       en: 'A student has a fixed budget to spend on Tacos (Price = $3) and Smoothies (Price = $6). At the current consumption bundle, the marginal utility of the last Taco is 15 utils, and the marginal utility of the last Smoothie is 24 utils. To maximize total utility, how should the student adjust consumption?',
       zh: '某学生有固定预算购买卷饼（单价 $3）与果昔（单价 $6）。在当前消费组合下，最后一件卷饼的边际效用为 15 效用，最后一件果昔的边际效用为 24 效用。为实现总效用最大化，该学生应如何调整消费？'
@@ -186,6 +189,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 2,
     topicCode: '2.3',
     topicId: 'price-elasticity-demand',
+    templateId: 'dyn-ped-tr-test',
     prompt: {
       en: 'If a coffee shop owner cuts the price of iced lattes by 10% and finds that Total Revenue from iced lattes increases by 15%, what can be concluded about the demand for iced lattes over this price range?',
       zh: '如果一家咖啡店将冰拿铁的售价下调 10%，结果发现冰拿铁的总销售额（总收益 TR）增加了 15%，那么在这一价格区间内，对冰拿铁的需求具有什么特征？'
@@ -235,6 +239,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 2,
     topicCode: '2.8',
     topicId: 'gov-intervention-taxes-deadweight',
+    templateId: 'dyn-tax-dwl-calculation',
     prompt: {
       en: 'Suppose the demand for insulin is perfectly inelastic with respect to price, while the supply of insulin is upward-sloping. If a per-unit excise tax of $10 is placed on the sellers of insulin, what is the economic burden (incidence) of the tax?',
       zh: '假定胰岛素的需求价格弹性为完全缺乏弹性（垂直线），而胰岛素的供给曲线向右上倾斜。如果政府对胰岛素销售商征收每单位 $10 的消费税，该税收的实际经济负担（税负归宿）将如何分配？'
@@ -284,6 +289,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 2,
     topicCode: '2.9',
     topicId: 'international-trade-tariffs',
+    templateId: 'dyn-tariff-welfare-calculation',
     prompt: {
       en: 'A country imposes a protective import tariff on imported steel. Which of the following correctly describes the welfare impact of this tariff compared to free trade?',
       zh: '某国对进口钢铁征收保护性关税。与自由贸易相比，下列哪一项正确描述了该关税的社会福利影响？'
@@ -340,6 +346,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 3,
     topicCode: '3.6',
     topicId: 'shutdown-rule',
+    templateId: 'dyn-shutdown-decision',
     prompt: {
       en: 'A perfectly competitive firm operates in the short run with a market price of P = $18. At its profit-maximizing output where MR = MC, the firm has Average Total Cost (ATC) = $22 and Average Variable Cost (AVC) = $15. What decision should the firm make in the short run?',
       zh: '某完全竞争企业在短期内运营，市场价格为 P = $18。在 MR = MC 的最优产量处，企业的平均总成本 ATC = $22，平均可变成本 AVC = $15。在短期内，该企业应做出什么决策？'
@@ -389,6 +396,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 3,
     topicCode: '3.7',
     topicId: 'perfect-competition-side-by-side',
+    templateId: 'dyn-perfect-competition-long-run',
     prompt: {
       en: 'Firms in a constant-cost perfectly competitive market are currently earning positive economic profits in the short run. Which of the following describes the long-run transition to equilibrium?',
       zh: '在成本不变的完全竞争行业中，现有企业在短期内普遍赚取正超额经济利润。下列哪一项正确描述了向长期均衡过渡的动态调整过程？'
@@ -445,6 +453,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 4,
     topicCode: '4.2',
     topicId: 'monopoly-single-price',
+    templateId: 'dyn-monopoly-output-price',
     prompt: {
       en: 'A pure monopolist produces with downward-sloping demand and positive marginal cost. At its current output, Marginal Revenue is $20 and Marginal Cost is $12. To maximize profit, how should the monopolist adjust output and price?',
       zh: '某纯粹垄断厂商面对向下倾斜的需求曲线与正边际成本。在当前产量水平下，边际收益 MR = $20，边际成本 MC = $12。为实现利润最大化，该垄断企业应如何调整产量与售价？'
@@ -494,6 +503,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 4,
     topicCode: '4.5',
     topicId: 'oligopoly-game-theory',
+    templateId: 'dyn-game-theory-nash',
     prompt: {
       en: 'In a duopoly game, Firm A and Firm B simultaneously choose between High Price and Low Price. Low Price is a strictly dominant strategy for both firms. The payoff matrix shows each firm earns $25 under (Low, Low) but could earn $50 under (High, High). What is the Nash Equilibrium and why is this a Prisoner\'s Dilemma?',
       zh: '在双头博弈中，A 公司与 B 公司同时在高价与低价之间做出抉择。“低价”是两家公司的严格占优策略。支付矩阵显示若双方都选低价各自获得 $25，若双方都选高价各自可获得 $50。该博弈的纳什均衡是什么？为什么它被称为囚徒困境？'
@@ -550,6 +560,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 5,
     topicCode: '5.3',
     topicId: 'factor-market-competitive',
+    templateId: 'dyn-factor-mrp-mfc',
     prompt: {
       en: 'A firm sells its product in a competitive output market for $5 per unit. The marginal product of the 4th worker is 6 units, and the competitive market wage is $20 per hour. Should the firm hire the 4th worker?',
       zh: '某企业在完全竞争产品市场上以每件 $5 的价格销售产品。第 4 位工人的边际产量为 6 件，市场竞争性工资为 $20/小时。该企业是否应当雇佣第 4 位工人？'
@@ -603,6 +614,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 6,
     topicCode: '6.2',
     topicId: 'negative-externalities',
+    templateId: 'dyn-externality-pigouvian-policy',
     prompt: {
       en: 'In an unregulated market for electricity generated from coal, which of the following is true regarding market equilibrium output and social allocative efficiency?',
       zh: '在不受管制的燃煤发电市场上，关于自由市场均衡产出与社会配置效率的关系，下列哪一项叙述是正确的？'
@@ -655,6 +667,7 @@ export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
     unit: 6,
     topicCode: '6.5',
     topicId: 'lorenz-curve-gini',
+    templateId: 'dyn-lorenz-gini-calculation',
     prompt: {
       en: 'A government implements a more progressive income tax alongside expanded cash welfare transfers to low-income families. How will this policy affect the nation\'s Lorenz curve and Gini coefficient?',
       zh: '某国政府实施了累进性更强的个人所得税，同时大幅扩大了针对低收入家庭的现金转移支付。这项政策将如何改变该国的洛伦兹曲线与基尼系数？'

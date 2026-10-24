@@ -244,3 +244,181 @@ export function generateUtilityMaximizationQuestion(): PracticeQuestion {
     }
   };
 }
+
+/**
+ * Capital Goods vs Consumer Goods & Long-Run Economic Growth (Topic 1.2 / 1.3)
+ */
+export function generateScarcitySystemsQuestion(): PracticeQuestion {
+  const nations = [
+    { nameA: 'Econia', nameB: 'Prospera' },
+    { nameA: 'Atlantis', nameB: 'Pacifica' },
+    { nameA: 'Nordia', nameB: 'Solaria' }
+  ];
+  const nation = randomChoice(nations);
+
+  const capitalShareA = randomChoice([60, 65, 70, 75]);
+  const capitalShareB = 100 - capitalShareA;
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `${nation.nameA} will experience greater long-run economic growth (larger outward shift of its PPC), but sacrifices current living standards (fewer consumer goods today).`,
+        zh: `${nation.nameA} 将实现更大的长期经济增长（PPC 曲线向外扩张幅度更大），但代价是必须牺牲当前的即期消费水平（短期内消费品更少）。`
+      },
+      explanation: {
+        en: `Correct! Capital goods (machinery, infrastructure, R&D) expand future productive capacity, shifting the PPC outward in the future. The opportunity cost of producing more capital goods today is giving up current consumer goods.`,
+        zh: `回答正确！生产资本品（机器设备、基础设施、技术研发）能够提升未来的生产能力，促使未来的 PPC 曲线向外平移扩展。当前多生产资本品的机会成本正是牺牲当前的即期消费品。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `${nation.nameB} will achieve faster economic growth because consumer goods generate immediate spending and GDP growth.`,
+          zh: `${nation.nameB} 将获得更快的经济增长，因为消费品能产生即时支出并拉动当前的 GDP。`
+        },
+        explanation: {
+          en: `Incorrect. Consumer goods provide immediate satisfaction today but do not expand future production capacity or shift the PPC outward.`,
+          zh: `错误。消费品虽然满足当前即时效用，但不能转化为未来的资本存量，无法推动 PPC 生产可能性边界向外扩张。`
+        }
+      },
+      {
+        text: {
+          en: `Both countries will experience identical long-run economic growth because points on the PPC are always equally efficient.`,
+          zh: `两国未来的长期经济增长将完全相同，因为 PPC 曲线上的所有点在生产效率上是等同的。`
+        },
+        explanation: {
+          en: `Incorrect. While all points on the PPC are productively efficient, the composition of output (capital vs consumer goods) determines future growth trajectory.`,
+          zh: `错误。尽管 PPC 曲线上的每一点都达到了当期的生产效率，但产出的结构配置（资本品 vs 消费品）直接决定了未来的增长轨迹。`
+        }
+      },
+      {
+        text: {
+          en: `${nation.nameA}'s current PPC will immediately shift inward due to excessive sacrifice of consumer goods.`,
+          zh: `${nation.nameA} 当前的 PPC 将立即向内收缩，因为过度牺牲了消费品。`
+        },
+        explanation: {
+          en: `Incorrect. Choosing a point with high capital goods is a movement ALONG the existing PPC, not an inward shift.`,
+          zh: `错误。选择偏向资本品的生产点属于沿着现有 PPC 曲线的“点在曲线上移动”，绝不会导致曲线本身向内收缩。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-scarcity-growth-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 1,
+    topicCode: '1.3',
+    topicId: 'ppc-model',
+    isDynamic: true,
+    templateId: 'dyn-scarcity-systems',
+    prompt: {
+      en: `Two economies with identical resources and technologies, ${nation.nameA} and ${nation.nameB}, operate on identical Production Possibilities Curves. ${nation.nameA} allocates ${capitalShareA}% of its resources to Capital Goods and ${100 - capitalShareA}% to Consumer Goods, while ${nation.nameB} allocates ${capitalShareB}% to Capital Goods and ${capitalShareA}% to Consumer Goods. What is the expected long-run consequence?`,
+      zh: `拥有相同资源与技术水平的两个经济体 ${nation.nameA} 和 ${nation.nameB} 均在相同的生产可能性边界（PPC）上满负荷生产。${nation.nameA} 将其 ${capitalShareA}% 的资源配置于“资本品”，${100 - capitalShareA}% 配置于“消费品”；而 ${nation.nameB} 仅将 ${capitalShareB}% 的资源投入“资本品”，${capitalShareA}% 投入“消费品”。由此可预期的长期经济后果是：`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Capital accumulation shifts the PPC outward over time. Nations that sacrifice current consumption to invest more in capital goods accumulate productive capacity and achieve faster economic growth.`,
+      zh: `资本积累是推动 PPC 长期向外扩张的核心驱动力。牺牲即期消费、将更高比例资源投入资本品生产的国家，未来生产潜能提升更显著。`
+    }
+  };
+}
+
+/**
+ * Absolute vs Comparative Advantage Distinction (Topic 1.4)
+ */
+export function generateAbsoluteVsComparativeQuestion(): PracticeQuestion {
+  const goodX = randomChoice([
+    { en: 'Microchips', zh: '芯片' },
+    { en: 'Aircraft', zh: '客机' },
+    { en: 'Smartphones', zh: '智能手机' }
+  ]);
+  const goodY = randomChoice([
+    { en: 'Wheat (tons)', zh: '小麦（吨）' },
+    { en: 'Soybeans (tons)', zh: '大豆（吨）' },
+    { en: 'Cotton (bales)', zh: '棉花（包）' }
+  ]);
+
+  // Country A outputs per 100 hours
+  const outAX = randomInt(40, 80);
+  const outAY = randomInt(20, 50);
+
+  // Country B outputs: make Country A have absolute advantage in Good X, and B in Good Y
+  const outBX = randomInt(15, 35);
+  const outBY = randomInt(60, 100);
+
+  // Opportunity cost of Good X
+  // Country A: 1 Good X costs (outAY / outAX) Good Y
+  const ocAX = Number((outAY / outAX).toFixed(2));
+  // Country B: 1 Good X costs (outBY / outBX) Good Y
+  const ocBX = Number((outBY / outBX).toFixed(2));
+
+  // A has lower opp cost in X, B has lower opp cost in Y
+  const targetGood = goodX;
+  const advantagedCountry = 'Country A';
+  const advantagedCountryZh = 'A 国';
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `${advantagedCountry} has comparative advantage in ${targetGood.en} because its opportunity cost (${ocAX} ${goodY.en}) is lower than Country B's (${ocBX} ${goodY.en}).`,
+        zh: `${advantagedCountryZh}在${targetGood.zh}上具有比较优势，因为其机会成本（${ocAX} 单位${goodY.zh}）低于 B 国的机会成本（${ocBX} 单位${goodY.zh}）。`
+      },
+      explanation: {
+        en: `Correct! Comparative advantage is determined by LOWER opportunity cost, not absolute productivity. Country A gives up only ${ocAX} ${goodY.en} per ${targetGood.en}, while Country B gives up ${ocBX} ${goodY.en}.`,
+        zh: `回答正确！比较优势由更低的机会成本决定，而非绝对产量高低。A 国生产 1 单位${targetGood.zh}仅需放弃 ${ocAX} 单位${goodY.zh}，而 B 国需放弃 ${ocBX} 单位。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Country B has comparative advantage in ${targetGood.en} because its total output of ${goodY.en} is higher.`,
+          zh: `B 国在${targetGood.zh}上具有比较优势，因为其${goodY.zh}的总产量更高。`
+        },
+        explanation: {
+          en: `Incorrect. High absolute production in Good Y does not give Country B comparative advantage in Good X.`,
+          zh: `错误。在另一种物品（${goodY.zh}）上的绝对高产量，并不能说明其在${targetGood.zh}上具有比较优势。`
+        }
+      },
+      {
+        text: {
+          en: `Neither country should trade because Country A produces more ${targetGood.en} while Country B produces more ${goodY.en}.`,
+          zh: `两国不应当进行贸易，因为 A 国生产的${targetGood.zh}更多，而 B 国生产的${goodY.zh}更多。`
+        },
+        explanation: {
+          en: `Incorrect. This difference in opportunity costs is precisely the reason mutually beneficial trade gains exist!`,
+          zh: `错误。机会成本的差异恰恰是双方通过专业化分工实现互利双赢的根本前提！`
+        }
+      },
+      {
+        text: {
+          en: `${advantagedCountry} has comparative advantage in BOTH goods because it can produce ${targetGood.en} more efficiently.`,
+          zh: `${advantagedCountryZh}在两种商品上均拥有比较优势，因为其制造${targetGood.zh}效率极高。`
+        },
+        explanation: {
+          en: `Incorrect. Mathematically, it is IMPOSSIBLE for one country to have comparative advantage in both goods (the opportunity costs are reciprocals).`,
+          zh: `错误。在数理逻辑上，任何一个国家绝不可能在两种商品上同时拥有比较优势（两者的机会成本互为倒数）。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-abs-vs-ca-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 1,
+    topicCode: '1.4',
+    topicId: 'comparative-advantage',
+    isDynamic: true,
+    templateId: 'dyn-absolute-vs-comparative',
+    prompt: {
+      en: `Given 100 hours of labor input: Country A can produce ${outAX} units of ${goodX.en} or ${outAY} units of ${goodY.en}. Country B can produce ${outBX} units of ${goodX.en} or ${outBY} units of ${goodY.en}. Which country has the comparative advantage in ${targetGood.en}?`,
+      zh: `假定使用 100 个工时的固定劳动投入：A 国可生产 ${outAX} 单位${goodX.zh}或 ${outAY} 单位${goodY.zh}；B 国可生产 ${outBX} 单位${goodX.zh}或 ${outBY} 单位${goodY.zh}。哪国在${targetGood.zh}生产上拥有比较优势？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Comparative advantage requires comparing per-unit opportunity cost. Country A OC of ${goodX.en} = ${outAY}/${outAX} = ${ocAX} ${goodY.en}. Country B OC of ${goodX.en} = ${outBY}/${outBX} = ${ocBX} ${goodY.en}. Since ${ocAX} < ${ocBX}, Country A has comparative advantage in ${goodX.en}.`,
+      zh: `比较优势的判定核心是机会成本比较：A 国每单位${goodX.zh}的机会成本为 ${outAY}/${outAX} = ${ocAX} 单位${goodY.zh}；B 国为 ${outBY}/${outBX} = ${ocBX} 单位${goodY.zh}。因 ${ocAX} < ${ocBX}，故 A 国拥有比较优势。`
+    }
+  };
+}

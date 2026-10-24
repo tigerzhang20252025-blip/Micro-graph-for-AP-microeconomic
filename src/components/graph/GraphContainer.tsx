@@ -15,7 +15,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   // SVG dimensions & padding (Standard 4:3 high-res responsive viewBox)
   const svgWidth = 640;
   const svgHeight = 480;
-  const padding = { top: 38, right: 65, bottom: 58, left: 68 };
+  const padding = { top: 40, right: 75, bottom: 62, left: 70 };
 
   const plotWidth = svgWidth - padding.left - padding.right;
   const plotHeight = svgHeight - padding.top - padding.bottom;
@@ -89,7 +89,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   };
 
   // ---------------------------------------------------------------------------
-  // ANTI-COLLISION ENGINE 1: Key Point Labels & Background Badges
+  // ANTI-COLLISION ENGINE 1: 8-Direction Radial Placement for Key Point Badges
   // ---------------------------------------------------------------------------
   interface PointBadgeLayout {
     pt: KeyPointSpec;
@@ -104,74 +104,103 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
     rectY: number;
   }
 
-  const pointLayouts: PointBadgeLayout[] = points.map((pt, idx) => {
+  const CANDIDATE_OFFSETS: Array<{ dx: number; dy: number; anchor: 'start' | 'end' | 'middle' }> = [
+    { dx: 11, dy: -9, anchor: 'start' },    // Top-Right (default preference)
+    { dx: -11, dy: -9, anchor: 'end' },     // Top-Left
+    { dx: 11, dy: 13, anchor: 'start' },    // Bottom-Right
+    { dx: -11, dy: 13, anchor: 'end' },     // Bottom-Left
+    { dx: 0, dy: -18, anchor: 'middle' },   // Top-Center
+    { dx: 0, dy: 20, anchor: 'middle' },    // Bottom-Center
+    { dx: 14, dy: 2, anchor: 'start' },     // Direct Right
+    { dx: -14, dy: 2, anchor: 'end' }       // Direct Left
+  ];
+
+  const pointLayouts: PointBadgeLayout[] = [];
+
+  points.forEach((pt) => {
     const sx = scaleX(pt.x);
     const sy = scaleY(pt.y);
     const textLen = pt.shortLabel.length;
     const badgeWidth = Math.max(34, textLen * 7.8 + 12);
     const badgeHeight = 18;
 
-    let offsetX = 10;
-    let offsetY = -8;
-    let anchor: 'start' | 'end' | 'middle' = 'start';
+    let bestScore = -999999;
+    let bestLayout = {
+      tx: sx + 10,
+      ty: sy - 8,
+      anchor: 'start' as 'start' | 'end' | 'middle',
+      rectX: sx + 6,
+      rectY: sy - 21
+    };
 
-    // Top boundary flip
-    if (sy < padding.top + 24) {
-      offsetY = 18;
-    } else if (sy > svgHeight - padding.bottom - 20) {
-      offsetY = -12;
-    }
+    for (const cand of CANDIDATE_OFFSETS) {
+      const tx = sx + cand.dx;
+      const ty = sy + cand.dy;
+      const rectX = cand.anchor === 'end' ? tx - badgeWidth + 2 : cand.anchor === 'middle' ? tx - badgeWidth / 2 : tx - 4;
+      const rectY = ty - 13;
 
-    // Right boundary flip
-    if (sx + badgeWidth > svgWidth - padding.right + 15) {
-      offsetX = -10;
-      anchor = 'end';
-    } else if (sx < padding.left + 35) {
-      offsetX = 10;
-      anchor = 'start';
-    }
+      let penalty = 0;
 
-    // Pairwise collision avoidance with previously placed points
-    for (let j = 0; j < idx; j++) {
-      const other = points[j];
-      const osx = scaleX(other.x);
-      const osy = scaleY(other.y);
-      const dist = Math.hypot(sx - osx, sy - osy);
-      if (dist < 34) {
-        if (offsetY < 0) {
-          offsetY = 18;
-        } else {
-          offsetY = -18;
+      // 1. Boundary Penalties
+      if (rectX < padding.left + 2) penalty += 2000;
+      if (rectX + badgeWidth > svgWidth - padding.right - 2) penalty += 2000;
+      if (rectY < padding.top + 2) penalty += 2000;
+      if (rectY + badgeHeight > svgHeight - padding.bottom - 4) penalty += 2000;
+
+      // 2. Collision with previously placed badges (AABB overlap)
+      for (const placed of pointLayouts) {
+        const overlapX = Math.max(0, Math.min(rectX + badgeWidth, placed.rectX + placed.badgeWidth) - Math.max(rectX, placed.rectX));
+        const overlapY = Math.max(0, Math.min(rectY + badgeHeight, placed.rectY + placed.badgeHeight) - Math.max(rectY, placed.rectY));
+        if (overlapX > 0 && overlapY > 0) {
+          penalty += 5000 + (overlapX * overlapY * 10);
         }
-        if (anchor === 'start' && sx > svgWidth / 2) {
-          anchor = 'end';
-          offsetX = -10;
+      }
+
+      // 3. Collision with other point core dots
+      for (const other of points) {
+        if (other.id === pt.id) continue;
+        const osx = scaleX(other.x);
+        const osy = scaleY(other.y);
+        if (osx >= rectX - 5 && osx <= rectX + badgeWidth + 5 && osy >= rectY - 5 && osy <= rectY + badgeHeight + 5) {
+          penalty += 1500;
         }
-        break;
+      }
+
+      // Bias slightly toward top-right default
+      const candidateScore = -penalty - Math.abs(cand.dx - 11) - Math.abs(cand.dy + 9);
+
+      if (candidateScore > bestScore) {
+        bestScore = candidateScore;
+        bestLayout = { tx, ty, anchor: cand.anchor, rectX, rectY };
       }
     }
 
-    const tx = sx + offsetX;
-    const ty = sy + offsetY;
-    const rectX = anchor === 'end' ? tx - badgeWidth + 2 : tx - 4;
-    const rectY = ty - 13;
-
-    return { pt, sx, sy, tx, ty, anchor, badgeWidth, badgeHeight, rectX, rectY };
+    pointLayouts.push({
+      pt,
+      sx,
+      sy,
+      tx: bestLayout.tx,
+      ty: bestLayout.ty,
+      anchor: bestLayout.anchor,
+      badgeWidth,
+      badgeHeight,
+      rectX: bestLayout.rectX,
+      rectY: bestLayout.rectY
+    });
   });
 
   // ---------------------------------------------------------------------------
-  // ANTI-COLLISION ENGINE 2: Drop-Line Value Badges (X and Y Axis)
+  // ANTI-COLLISION ENGINE 2: Drop-Line Badges & Standard Tick Collision Tracking
   // ---------------------------------------------------------------------------
-  // Stagger X-axis drop badges into two alternating tiers if within 38px
   const visibleDropX = points.filter((p) => p.showDropLines && p.xLabel);
   const sortedDropX = [...visibleDropX].sort((a, b) => scaleX(a.x) - scaleX(b.x));
-  const dropXConfig: Record<string, { tier: number; yPos: number }> = {};
+  const dropXConfig: Record<string, { tier: number; yPos: number; sx: number }> = {};
   let lastSx = -999;
   let curTier = 0;
 
   sortedDropX.forEach((pt) => {
     const sx = scaleX(pt.x);
-    if (sx - lastSx < 40) {
+    if (sx - lastSx < 42) {
       curTier = curTier === 0 ? 1 : 0;
     } else {
       curTier = 0;
@@ -179,30 +208,35 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
     lastSx = sx;
     dropXConfig[pt.id] = {
       tier: curTier,
-      yPos: svgHeight - padding.bottom + (curTier === 0 ? 16 : 28)
+      yPos: svgHeight - padding.bottom + (curTier === 0 ? 16 : 29),
+      sx
     };
   });
 
-  // Stagger Y-axis drop badges if within 18px vertically
+  // Active Drop Coordinates for Standard Tick Suppression
+  const activeDropXCoords = sortedDropX.map((p) => scaleX(p.x));
+
   const visibleDropY = points.filter((p) => p.showDropLines && p.yLabel);
   const sortedDropY = [...visibleDropY].sort((a, b) => scaleY(a.y) - scaleY(b.y));
-  const dropYConfig: Record<string, number> = {};
+  const dropYConfig: Record<string, { yShift: number; sy: number }> = {};
   let lastSy = -999;
   let yShift = 0;
 
   sortedDropY.forEach((pt) => {
     const sy = scaleY(pt.y);
     if (sy - lastSy < 18) {
-      yShift = yShift === 0 ? -8 : (yShift === -8 ? 8 : 0);
+      yShift = yShift === 0 ? -9 : yShift === -9 ? 9 : 0;
     } else {
       yShift = 0;
     }
     lastSy = sy;
-    dropYConfig[pt.id] = yShift;
+    dropYConfig[pt.id] = { yShift, sy };
   });
 
+  const activeDropYCoords = sortedDropY.map((p) => scaleY(p.y));
+
   // ---------------------------------------------------------------------------
-  // ANTI-COLLISION ENGINE 3: Curve End Labels Clamping & Vertical Staggering
+  // ANTI-COLLISION ENGINE 3: Bounded Multi-Tier Curve End Labels
   // ---------------------------------------------------------------------------
   interface CurveLabelLayout {
     curveId: string;
@@ -225,7 +259,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
       // Clamp within viewport
       const clampedX = Math.min(rawX + 8, svgWidth - width - 6);
-      const clampedY = Math.max(padding.top + 10, Math.min(svgHeight - padding.bottom - 6, rawY + 4));
+      const clampedY = Math.max(padding.top + 10, Math.min(svgHeight - padding.bottom - 16, rawY + 4));
 
       return {
         curveId: curve.id,
@@ -238,13 +272,20 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
       };
     });
 
-  // Separate curve labels vertically if they are close
+  // Separate curve labels vertically & horizontally if congested
   const curveLabels = [...rawCurveLabels].sort((a, b) => a.y - b.y);
   for (let i = 1; i < curveLabels.length; i++) {
     const prev = curveLabels[i - 1];
     const curr = curveLabels[i];
-    if (Math.abs(curr.x - prev.x) < 50 && curr.y - prev.y < 21) {
-      curr.y = Math.min(svgHeight - padding.bottom - 6, prev.y + 21);
+    if (Math.abs(curr.x - prev.x) < 48 && curr.y - prev.y < 21) {
+      // If pushing down exceeds bottom bounds, push previous up or shift horizontally
+      if (prev.y + 21 > svgHeight - padding.bottom - 16) {
+        prev.y = Math.max(padding.top + 10, prev.y - 12);
+        curr.y = Math.min(svgHeight - padding.bottom - 16, prev.y + 21);
+        curr.x = Math.max(padding.left + 10, curr.x - 36); // Horizontal stagger tier
+      } else {
+        curr.y = prev.y + 21;
+      }
     }
   }
 
@@ -377,8 +418,8 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
                 const axisY = svgHeight - padding.bottom;
                 const axisX = padding.left;
 
-                const xCfg = dropXConfig[pt.id] || { tier: 0, yPos: axisY + 16 };
-                const yShiftOffset = dropYConfig[pt.id] || 0;
+                const xCfg = dropXConfig[pt.id] || { tier: 0, yPos: axisY + 16, sx };
+                const yShiftOffset = dropYConfig[pt.id]?.yShift || 0;
 
                 return (
                   <g key={`dropline-${pt.id}`} opacity="0.85">
@@ -593,51 +634,65 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
               markerEnd="url(#axis-arrow)"
             />
 
-            {/* Y Axis Tick Marks & Numbers */}
-            {yTicks.map((y) => (
-              <g key={`tick-y-${y}`} transform={`translate(${padding.left}, ${scaleY(y)})`}>
-                <line x1="-5" y1="0" x2="0" y2="0" stroke="#334155" strokeWidth="1.5" />
-                <text
-                  x="-8"
-                  y="4"
-                  textAnchor="end"
-                  className="text-[10px] font-mono fill-slate-500"
-                >
-                  {axes.yPrefix || ''}{y}{axes.ySuffix || ''}
-                </text>
-              </g>
-            ))}
+            {/* Y Axis Tick Marks & Numbers (with collision suppression) */}
+            {yTicks.map((y) => {
+              const sy = scaleY(y);
+              const isSuppressedY =
+                layerVisibility.showDropLines && activeDropYCoords.some((by) => Math.abs(by - sy) < 18);
+              return (
+                <g key={`tick-y-${y}`} transform={`translate(${padding.left}, ${sy})`}>
+                  <line x1="-5" y1="0" x2="0" y2="0" stroke="#334155" strokeWidth="1.5" />
+                  {!isSuppressedY && (
+                    <text
+                      x="-8"
+                      y="4"
+                      textAnchor="end"
+                      className="text-[10px] font-mono fill-slate-500"
+                    >
+                      {axes.yPrefix || ''}{y}{axes.ySuffix || ''}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
-            {/* X Axis Tick Marks & Numbers */}
-            {xTicks.map((x) => (
-              <g key={`tick-x-${x}`} transform={`translate(${scaleX(x)}, ${svgHeight - padding.bottom})`}>
-                <line x1="0" y1="0" x2="0" y2="5" stroke="#334155" strokeWidth="1.5" />
-                <text
-                  x="0"
-                  y="18"
-                  textAnchor="middle"
-                  className="text-[10px] font-mono fill-slate-500"
-                >
-                  {axes.xPrefix || ''}{x}{axes.xSuffix || ''}
-                </text>
-              </g>
-            ))}
+            {/* X Axis Tick Marks & Numbers (with collision suppression) */}
+            {xTicks.map((x) => {
+              const sx = scaleX(x);
+              const isSuppressedX =
+                layerVisibility.showDropLines && activeDropXCoords.some((bx) => Math.abs(bx - sx) < 24);
+              return (
+                <g key={`tick-x-${x}`} transform={`translate(${sx}, ${svgHeight - padding.bottom})`}>
+                  <line x1="0" y1="0" x2="0" y2="5" stroke="#334155" strokeWidth="1.5" />
+                  {!isSuppressedX && (
+                    <text
+                      x="0"
+                      y="18"
+                      textAnchor="middle"
+                      className="text-[10px] font-mono fill-slate-500"
+                    >
+                      {axes.xPrefix || ''}{x}{axes.xSuffix || ''}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
 
-            {/* Y Axis Title */}
+            {/* Y Axis Title (Elevated and offset from arrow tip) */}
             <text
-              x={padding.left}
-              y={padding.top - 18}
+              x={padding.left + 12}
+              y={padding.top - 16}
               textAnchor="start"
               className="text-xs font-semibold fill-slate-800"
             >
               {tr(axes.yLabel)}
             </text>
 
-            {/* X Axis Title */}
+            {/* X Axis Title (Positioned cleanly above the horizontal arrow) */}
             <text
               x={svgWidth - padding.right + 20}
-              y={svgHeight - padding.bottom + 20}
-              textAnchor="end"
+              y={svgHeight - padding.bottom - 6}
+              textAnchor="start"
               className="text-xs font-semibold fill-slate-800"
             >
               {tr(axes.xLabel)}

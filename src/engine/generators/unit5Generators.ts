@@ -151,3 +151,152 @@ export function generateMonopsonyWageQuestion(): PracticeQuestion {
     }
   };
 }
+
+/**
+ * Competitive Labor Market vs Monopsony Comparison (Topic 5.3 / 5.4)
+ */
+export function generateMonopsonyVsCompetitiveComparisonQuestion(): PracticeQuestion {
+  const compWage = randomChoice([20, 25, 30]);
+  const compLabor = randomInt(80, 120);
+
+  const monopWage = compWage - randomChoice([5, 8]);
+  const monopLabor = compLabor - randomChoice([25, 35]);
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `Compared to a competitive factor market: The monopsony hires FEWER workers (${monopLabor} vs ${compLabor}) and pays a LOWER wage ($${monopWage} vs $${compWage}), generating deadweight loss in the factor market.`,
+        zh: `与完全竞争要素市场相比：买方垄断雇佣更少的劳动力（${monopLabor} 对比 ${compLabor} 人）且支付更低的工资率（$${monopWage} 对比 $${compWage}），在要素市场上造成净无谓损失。`
+      },
+      explanation: {
+        en: `Correct! In a competitive factor market, hiring occurs where MRP = Supply (wage = $${compWage}, labor = ${compLabor}). A monopsony equates MRP = MFC (which lies above supply), restricting employment to ${monopLabor} and depressing wages to $${monopWage}.`,
+        zh: `回答正确！在完全竞争市场中，雇佣发生在 MRP = 劳动力供给处（工资 = $${compWage}，人数 = ${compLabor}）。买方垄断在 MRP = MFC 决策，大幅削减用工规模至 ${monopLabor} 人，并将工资压低至 $${monopWage}。`
+      }
+    },
+    [
+      {
+        text: {
+          en: `The monopsony hires MORE workers because it is the only employer in town.`,
+          zh: `买方垄断雇佣更多工人，因为它是全镇唯一的雇主。`
+        },
+        explanation: {
+          en: `Incorrect. Because hiring extra workers forces up the wage for ALL workers (MFC > S_L), the monopsonist restricts hiring to keep wages low.`,
+          zh: `错误。增雇新工人会迫使企业对全体在职员工加薪（MFC > S_L），因此买方垄断者会故意收缩雇佣以压低整体工资。`
+        }
+      },
+      {
+        text: {
+          en: `The monopsony pays a higher wage ($${compWage + 10}) to attract scarce labor.`,
+          zh: `买方垄断支付更高的工资（$${compWage + 10}）以吸引稀缺劳动力。`
+        },
+        explanation: {
+          en: `Incorrect. Monopsonists possess market buying power and exploit the upward-sloping labor supply curve to markdown wages below competitive levels.`,
+          zh: `错误。买方垄断拥有单边买方势力，会利用向上倾斜的供给线压榨劳动者，支付低于竞争水平的工资。`
+        }
+      },
+      {
+        text: {
+          en: `Both market structures yield identical wage and employment because labor supply is identical.`,
+          zh: `两种市场结构下的工资与雇佣量完全相同，因为劳动力供给曲线是一样的。`
+        },
+        explanation: {
+          en: `Incorrect. The competitive market faces a horizontal MFC (wage-taker), whereas the monopsonist faces an upward-sloping MFC curve twice as steep as supply.`,
+          zh: `错误。竞争性厂商是工资接受者（水平 MFC），而买方垄断面对陡峭上扬的 MFC 曲线，均衡结果大相径庭。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-monop-comp-compare-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 5,
+    topicCode: '5.4',
+    topicId: 'monopsony-factor-market',
+    isDynamic: true,
+    templateId: 'dyn-monopsony-vs-competitive',
+    prompt: {
+      en: `Suppose a local healthcare labor market for registered nurses is currently competitive, with equilibrium wage Wc = $${compWage}/hr and employment Lc = ${compLabor} nurses. If a hospital conglomerate buys all local clinics, becoming a single-buyer Monopsony, what happens to nurse employment and wage rates?`,
+      zh: `假定某地区注册护士劳动力市场原为完全竞争市场，均衡时薪 Wc = $${compWage}，雇佣量 Lc = ${compLabor} 人。随后一家大型医疗集团收购了所有诊所，成为该地区唯一的买方垄断雇主（Monopsony）。该市场的护士雇佣数量与实际薪资将发生何种变动？`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Monopsony vs Competition: Competition: MRP = Supply_L => Optimal (Wc, Lc). Monopsony: MRP = MFC_L => restricted hiring (Lm < Lc) and wage markdown (Wm < Wc), resulting in factor market deadweight loss.`,
+      zh: `买方垄断 vs 完全竞争：竞争市场在 MRP = S_L 达成社会最优（Wc, Lc）；买方垄断在 MRP = MFC 雇工，产生更低的雇佣量（Lm < Lc）与更低的时薪（Wm < Wc），造成社会无谓损失。`
+    }
+  };
+}
+
+/**
+ * Minimum Wage in Competitive Market vs Monopsony (Topic 5.4)
+ */
+export function generateMinimumWageMonopsonyQuestion(): PracticeQuestion {
+  const wm = randomChoice([12, 14, 16]);
+  const minWage = wm + randomChoice([3, 5]); // set between Wm and MFC
+  const lm = randomInt(40, 60);
+  const lNew = lm + randomChoice([15, 20]); // employment actually expands!
+
+  const { options, correctOptionId } = buildFourOptions(
+    {
+      text: {
+        en: `In a monopsonistic labor market, setting a minimum wage of $${minWage} makes MFC horizontal at $${minWage}, which INCREASES employment (from ${lm} to ${lNew} workers) and raises the wage.`,
+        zh: `在买方垄断劳动力市场上，设立 $${minWage} 的法定最低工资使 MFC 在该工资水平上变为完全水平，这将促使雇佣人数增加（由 ${lm} 增至 ${lNew} 人）并提高工人工资。`
+      },
+      explanation: {
+        en: `Correct! Unlike in a competitive market (where a binding minimum wage creates unemployment), in a monopsony, a minimum wage eliminates the firm's incentive to restrict hiring to keep wages low. The firm becomes a wage-taker at the minimum wage up to the supply curve, expanding employment.`,
+        zh: `回答正确！不同于完全竞争市场（最低工资制造失业），在买方垄断中，适度的法定最低工资消除了雇主为压低工资而故意少雇工的动机。最低工资线使 MFC 变为水平，促使雇佣人数与工资双双增加！`
+      }
+    },
+    [
+      {
+        text: {
+          en: `Employment must decrease by exactly 50% because labor costs increase.`,
+          zh: `雇佣人数必然减少 50%，因为劳动力成本上升了。`
+        },
+        explanation: {
+          en: `Incorrect. This applies only to competitive markets with downward-sloping demand; a monopsony with market power can expand employment when MFC is flattened by the minimum wage.`,
+          zh: `错误。这只适用于完全竞争市场；在买方垄断下，最低工资削平了陡峭的 MFC 曲线，反倒刺激雇主增雇员工。`
+        }
+      },
+      {
+        text: {
+          en: `Wages fall to zero because the monopsonist refuses to obey the minimum wage.`,
+          zh: `工资降为零，因为买方垄断者拒绝遵守法定最低工资。`
+        },
+        explanation: {
+          en: `Incorrect. Legal regulations are binding on employers.`,
+          zh: `错误。法定最低工资具有法律强制约束力。`
+        }
+      },
+      {
+        text: {
+          en: `The minimum wage has zero effect because monopsonies are exempt from government labor laws.`,
+          zh: `最低工资毫无影响，因为买方垄断者豁免于国家劳动法。`
+        },
+        explanation: {
+          en: `Incorrect. Minimum wage laws apply universally across labor markets.`,
+          zh: `错误。最低工资法普遍适用于所有商业雇佣主体。`
+        }
+      }
+    ]
+  );
+
+  return {
+    id: `dyn-min-wage-monop-${Date.now()}-${randomInt(100, 999)}`,
+    unit: 5,
+    topicCode: '5.4',
+    topicId: 'monopsony-factor-market',
+    isDynamic: true,
+    templateId: 'dyn-minimum-wage-monopsony',
+    prompt: {
+      en: `A monopsony employer pays an equilibrium wage of $${wm}/hr and employs ${lm} workers, where MFC = $${wm + 10}. The government establishes a binding legal minimum wage of $${minWage}/hr (which lies between $${wm} and the original MFC). What is the theoretical effect on wage and employment in this monopsonistic market?`,
+      zh: `某买方垄断雇主当前支付的均衡时薪为 $${wm}，雇佣 ${lm} 名工人，此时 MFC 为 $${wm + 10}。政府随后颁布了每小时 $${minWage} 的法定最低工资（介于原工资 $${wm} 与原 MFC 之间）。在买方垄断市场上，该政策对薪资和雇佣量产生的理论效应是：`
+    },
+    options,
+    correctOptionId,
+    overallExplanation: {
+      en: `Minimum Wage in Monopsony: When minimum wage W_min is set between Wm and MFC, the firm's new marginal factor cost is flat at W_min. Consequently, the firm hires more labor where MRP = W_min, simultaneously increasing both employment and wages.`,
+      zh: `买方垄断下的最低工资悖论：当最低工资设定在原工资 Wm 与原 MFC 之间时，该企业的边际要素成本被锁定在水平的最低工资线上。企业在 MRP = W_min 处雇工，实现时薪与雇佣规模的同步提升。`
+    }
+  };
+}
