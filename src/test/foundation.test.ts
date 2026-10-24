@@ -29,6 +29,8 @@ import { lorenzCurveModel } from '../engine/models/lorenzCurveModel';
 import { utilityMaximizationModel } from '../engine/models/utilityMaximizationModel';
 import { indifferenceCurveModel } from '../engine/models/indifferenceCurveModel';
 import { cournotDuopolyModel } from '../engine/models/cournotDuopolyModel';
+import { ECONOMIC_DICTIONARY } from '../data/economicDictionary';
+import { searchDictionary, getTermById } from '../engine/search/dictionarySearch';
 
 console.log('==============================================');
 console.log('🧪 AP MICROECONOMICS GRAPH LAB: COMPREHENSIVE AUDIT');
@@ -334,10 +336,63 @@ assert(similarSample.topicId === 'ppc-model', 'Similar question generator matche
 const randomDyn = generateRandomDynamicQuestion(2);
 assert(randomDyn.unit === 2, 'Random dynamic question filters to requested unit');
 
+// 22. Economic Dictionary & Acronym Search Engine Audit
+console.log('\n--- 22. Economic Dictionary & Acronym Search Engine Audit ---');
+assert(ECONOMIC_DICTIONARY.length >= 50, `Dictionary contains ${ECONOMIC_DICTIONARY.length} terms (>= 50 terms across all 6 AP units)`);
+
+// Check unit representation
+for (let u = 1; u <= 6; u++) {
+  const count = ECONOMIC_DICTIONARY.filter(t => t.unit === u).length;
+  assert(count >= 3, `Unit ${u} has rich terminology representation: ${count} terms`);
+}
+
+// Check every term has valid bilingual content
+for (const term of ECONOMIC_DICTIONARY) {
+  assert(term.en.length > 0 && term.zh.length > 0, `Term "${term.id}" has bilingual title`);
+  assert(term.definition.en.length > 0 && term.definition.zh.length > 0, `Term "${term.id}" has bilingual definition`);
+  assert(term.unit >= 1 && term.unit <= 6, `Term "${term.id}" has valid unit ${term.unit}`);
+  
+  if (term.linkedModelId) {
+    const model = getModelById(term.linkedModelId);
+    assert(model !== undefined, `Term "${term.id}" linkedModelId "${term.linkedModelId}" resolves to registered model`);
+  }
+
+  for (const rc of term.relatedConcepts) {
+    const target = getTermById(rc.termId);
+    assert(target !== undefined, `Term "${term.id}" related concept "${rc.termId}" exists in dictionary`);
+  }
+}
+
+// Search engine exact match checks
+const mcResults = searchDictionary('MC');
+assert(mcResults.length > 0 && (mcResults[0].abbreviation === 'MC' || mcResults[0].id === 'term-marginal-cost'), 'Search "MC" ranks Marginal Cost as #1');
+
+const atcResults = searchDictionary('ATC');
+assert(atcResults.length > 0 && atcResults[0].id === 'term-atc', 'Search "ATC" ranks Average Total Cost as #1');
+
+const dwlResults = searchDictionary('DWL');
+assert(dwlResults.length > 0 && dwlResults[0].id === 'term-deadweight-loss', 'Search "DWL" ranks Deadweight Loss as #1');
+
+const mrpResults = searchDictionary('MRP');
+assert(mrpResults.length > 0 && mrpResults[0].id === 'term-mrp', 'Search "MRP" ranks Marginal Revenue Product as #1');
+
+const zhResults = searchDictionary('边际成本');
+assert(zhResults.length > 0 && zhResults[0].id === 'term-marginal-cost', 'Search "边际成本" returns Marginal Cost');
+
+const formulaResults = searchDictionary('d(TC)/dQ');
+assert(formulaResults.some(t => t.id === 'term-marginal-cost'), 'Search formula "d(TC)/dQ" finds Marginal Cost');
+
+// Filter checks
+const unit3Filtered = searchDictionary('', { unit: 3 });
+assert(unit3Filtered.every(t => t.unit === 3), 'Filter by Unit 3 returns only Unit 3 terms');
+
+const costFiltered = searchDictionary('', { category: 'cost' });
+assert(costFiltered.every(t => t.category === 'cost'), 'Filter by category "cost" returns only cost terms');
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 21 AUDIT SUITES PASSED WITH 0 FAILURES!');
-  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH & DYNAMIC PRACTICE SYSTEM VERIFIED!');
+  console.log('🎉 ALL 22 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH, DYNAMIC PRACTICE & DICTIONARY SEARCH SYSTEM VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);

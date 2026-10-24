@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState, AppView } from '../../context/AppStateContext';
-import { LineChart, BookOpen, BrainCircuit, Globe, Menu, X, ShieldCheck, Sparkles } from 'lucide-react';
+import { LineChart, BookOpen, BrainCircuit, Globe, Menu, X, ShieldCheck, Sparkles, Search } from 'lucide-react';
+import { GlobalSearchModal } from '../common/GlobalSearchModal';
 
 export const Navbar: React.FC = () => {
   const { language, toggleLanguage, t } = useLanguage();
   const { currentView, setCurrentView } = useAppState();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global Cmd+K / Ctrl+K keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const navItems: { view: AppView; label: string; icon: React.ReactNode }[] = [
     {
@@ -89,8 +103,23 @@ export const Navbar: React.FC = () => {
             })}
           </nav>
 
-          {/* Right Action: Language Switch Button */}
-          <div className="flex items-center gap-3">
+          {/* Right Action: Search & Language Switch Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Search Trigger Button */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-all shadow-2xs group"
+              title={language === 'zh' ? '搜索 AP 经济学缩写与概念 (⌘K)' : 'Search AP Micro Acronyms & Terms (⌘K)'}
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+              <span className="hidden sm:inline">
+                {language === 'zh' ? '搜索缩写/概念' : 'Search Acronyms'}
+              </span>
+              <kbd className="hidden md:inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-500 font-mono shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
+
             <button
               onClick={toggleLanguage}
               aria-label="Toggle language"
@@ -114,6 +143,16 @@ export const Navbar: React.FC = () => {
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-100 py-3 space-y-1">
+            <button
+              onClick={() => {
+                setIsSearchOpen(true);
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-semibold text-left text-blue-700 bg-blue-50/50 hover:bg-blue-50 mb-2 border border-blue-200"
+            >
+              <Search className="w-4 h-4 text-blue-600" />
+              <span>{language === 'zh' ? '搜索学科名词与简写 (MC, ATC...)' : 'Search Terms & Acronyms (MC, ATC...)'}</span>
+            </button>
             {navItems.map((item) => {
               const isActive = currentView === item.view;
               return (
@@ -134,6 +173,9 @@ export const Navbar: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Global Search Spotlight Modal */}
+      <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </header>
   );
 };
