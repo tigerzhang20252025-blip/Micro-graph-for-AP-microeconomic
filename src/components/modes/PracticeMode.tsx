@@ -1,420 +1,1147 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
 import { PRACTICE_QUESTIONS, PracticeQuestion } from '../../data/practiceQuestions';
 import {
+  generateRandomDynamicQuestion,
+  generateSimilarQuestion,
+  generateMockExamQuestions
+} from '../../engine/generators';
+import { MistakeRecord, MockExamState } from '../../types/practice';
+import {
   BrainCircuit,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   ArrowRight,
   ArrowLeft,
   RotateCcw,
   ExternalLink,
   Award,
-  Filter
+  Filter,
+  Sparkles,
+  Timer,
+  BookOpen,
+  CheckSquare,
+  Flame,
+  RefreshCw,
+  Trophy
 } from 'lucide-react';
+
+type PracticeTab = 'infinite' | 'mock' | 'mistakes' | 'classic';
 
 export const PracticeMode: React.FC = () => {
   const { language, t, tr } = useLanguage();
   const { navigateToGraph } = useAppState();
 
+  const [activeTab, setActiveTab] = useState<PracticeTab>('infinite');
   const [selectedUnit, setSelectedUnit] = useState<number>(0); // 0 = all units
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [userAnswers, setUserAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
-  const [submittedQuestions, setSubmittedQuestions] = useState<Record<string, boolean>>({});
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
-  // Filtered question set
-  const filteredQuestions = PRACTICE_QUESTIONS.filter((q) => {
-    if (selectedUnit === 0) return true;
-    return q.unit === selectedUnit;
+  // -------------------------------------------------------------
+  // 1. Infinite Dynamic Practice State
+  // -------------------------------------------------------------
+  const [dynamicQuestion, setDynamicQuestion] = useState<PracticeQuestion>(() =>
+    generateRandomDynamicQuestion(0)
+  );
+  const [dynamicAnswer, setDynamicAnswer] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
+  const [isDynamicSubmitted, setIsDynamicSubmitted] = useState<boolean>(false);
+  const [dynamicStats, setDynamicStats] = useState<{ answered: number; correct: number }>({
+    answered: 0,
+    correct: 0
   });
 
-  const activeQuestionIndex = Math.min(currentQuestionIndex, Math.max(0, filteredQuestions.length - 1));
-  const currentQ: PracticeQuestion | undefined = filteredQuestions[activeQuestionIndex];
-
-  // Scoring
-  const totalAnswered = Object.keys(submittedQuestions).length;
-  let correctCount = 0;
-  PRACTICE_QUESTIONS.forEach((q) => {
-    if (submittedQuestions[q.id] && userAnswers[q.id] === q.correctOptionId) {
-      correctCount++;
+  // -------------------------------------------------------------
+  // 2. Mistake Notebook State (Persisted in localStorage)
+  // -------------------------------------------------------------
+  const [mistakes, setMistakes] = useState<MistakeRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('ap_micro_mistakes_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
   });
 
-  const handleSelectOption = (optId: 'A' | 'B' | 'C' | 'D') => {
-    if (!currentQ || submittedQuestions[currentQ.id]) return;
-    setUserAnswers((prev) => ({ ...prev, [currentQ.id]: optId }));
-    setWarningMessage(null);
-  };
+  const [activeDrillMistake, setActiveDrillMistake] = useState<{
+    originalRecord: MistakeRecord;
+    variantQuestion: PracticeQuestion;
+    chosenOption: 'A' | 'B' | 'C' | 'D' | null;
+    isSubmitted: boolean;
+  } | null>(null);
 
-  const handleSubmitAnswer = () => {
-    if (!currentQ) return;
-    if (!userAnswers[currentQ.id]) {
-      setWarningMessage(t.pleaseSelectOptionWarning);
-      return;
+  useEffect(() => {
+    try {
+      localStorage.setItem('ap_micro_mistakes_v1', JSON.stringify(mistakes));
+    } catch {
+      // ignore
     }
-    setSubmittedQuestions((prev) => ({ ...prev, [currentQ.id]: true }));
-    setWarningMessage(null);
+  }, [mistakes]);
+
+  // -------------------------------------------------------------
+  // 3. AP Mock Exam State
+  // -------------------------------------------------------------
+  const [mockExam, setMockExam] = useState<MockExamState>({
+    isActive: false,
+    totalQuestions: 15,
+    timeRemainingSeconds: 20 * 60,
+    questions: [],
+    userAnswers: {},
+    submitted: false
+  });
+  const [activeMockIndex, setActiveMockIndex] = useState<number>(0);
+  const [selectedExamLength, setSelectedExamLength] = useState<number>(15);
+
+  // Countdown timer for Mock Exam
+  useEffect(() => {
+    if (!mockExam.isActive || mockExam.submitted) return;
+
+    const timer = setInterval(() => {
+      setMockExam((prev) => {
+        if (prev.timeRemainingSeconds <= 1) {
+          clearInterval(timer);
+          return handleAutoSubmitExam(prev);
+        }
+        return { ...prev, timeRemainingSeconds: prev.timeRemainingSeconds - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [mockExam.isActive, mockExam.submitted]);
+
+  // -------------------------------------------------------------
+  // 4. Classic Curated Questions State
+  // -------------------------------------------------------------
+  const [classicIndex, setClassicIndex] = useState<number>(0);
+  const [classicAnswers, setClassicAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D'>>({});
+  const [classicSubmitted, setClassicSubmitted] = useState<Record<string, boolean>>({});
+
+  const filteredClassic = PRACTICE_QUESTIONS.filter(
+    (q) => selectedUnit === 0 || q.unit === selectedUnit
+  );
+  const currentClassic = filteredClassic[Math.min(classicIndex, Math.max(0, filteredClassic.length - 1))];
+
+  // -------------------------------------------------------------
+  // Handlers: Infinite Dynamic Mode
+  // -------------------------------------------------------------
+  const handleLoadNewDynamicQuestion = (unit?: number) => {
+    const targetUnit = unit !== undefined ? unit : selectedUnit;
+    const q = generateRandomDynamicQuestion(targetUnit);
+    setDynamicQuestion(q);
+    setDynamicAnswer(null);
+    setIsDynamicSubmitted(false);
   };
 
-  const handleRetryQuestion = () => {
-    if (!currentQ) return;
-    setSubmittedQuestions((prev) => {
-      const next = { ...prev };
-      delete next[currentQ.id];
-      return next;
+  const handleGenerateSimilar = () => {
+    if (dynamicQuestion.templateId) {
+      const q = generateSimilarQuestion(dynamicQuestion.templateId);
+      setDynamicQuestion(q);
+    } else {
+      handleLoadNewDynamicQuestion();
+    }
+    setDynamicAnswer(null);
+    setIsDynamicSubmitted(false);
+  };
+
+  const handleSubmitDynamicAnswer = () => {
+    if (!dynamicAnswer) return;
+    setIsDynamicSubmitted(true);
+
+    const isCorrect = dynamicAnswer === dynamicQuestion.correctOptionId;
+    setDynamicStats((prev) => ({
+      answered: prev.answered + 1,
+      correct: isCorrect ? prev.correct + 1 : prev.correct
+    }));
+
+    // Record mistake if wrong
+    if (!isCorrect) {
+      const newMistake: MistakeRecord = {
+        questionId: dynamicQuestion.id,
+        templateId: dynamicQuestion.templateId,
+        unit: dynamicQuestion.unit,
+        topicCode: dynamicQuestion.topicCode,
+        topicId: dynamicQuestion.topicId,
+        prompt: dynamicQuestion.prompt,
+        userWrongOptionId: dynamicAnswer,
+        correctOptionId: dynamicQuestion.correctOptionId,
+        explanation: dynamicQuestion.overallExplanation,
+        timestamp: Date.now(),
+        consecutiveCorrect: 0
+      };
+      setMistakes((prev) => [newMistake, ...prev.filter((m) => m.templateId !== dynamicQuestion.templateId)]);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // Handlers: Mock Exam Mode
+  // -------------------------------------------------------------
+  const handleStartMockExam = (length: number) => {
+    const questions = generateMockExamQuestions(length);
+    // Allocate ~1.2 minutes per question (official AP pace)
+    const totalSeconds = length * 75;
+
+    setMockExam({
+      isActive: true,
+      totalQuestions: length,
+      timeRemainingSeconds: totalSeconds,
+      questions,
+      userAnswers: {},
+      submitted: false
     });
-    setUserAnswers((prev) => {
-      const next = { ...prev };
-      delete next[currentQ.id];
-      return next;
+    setActiveMockIndex(0);
+  };
+
+  const handleAutoSubmitExam = (state: MockExamState): MockExamState => {
+    let correct = 0;
+    const unitBreakdown: Record<number, { correct: number; total: number }> = {
+      1: { correct: 0, total: 0 },
+      2: { correct: 0, total: 0 },
+      3: { correct: 0, total: 0 },
+      4: { correct: 0, total: 0 },
+      5: { correct: 0, total: 0 },
+      6: { correct: 0, total: 0 }
+    };
+
+    state.questions.forEach((q) => {
+      const u = q.unit;
+      if (!unitBreakdown[u]) unitBreakdown[u] = { correct: 0, total: 0 };
+      unitBreakdown[u].total++;
+
+      if (state.userAnswers[q.id] === q.correctOptionId) {
+        correct++;
+        unitBreakdown[u].correct++;
+      }
     });
-    setWarningMessage(null);
+
+    const pct = Math.round((correct / state.totalQuestions) * 100);
+    let apScoreEstimate: 1 | 2 | 3 | 4 | 5 = 1;
+    if (pct >= 80) apScoreEstimate = 5;
+    else if (pct >= 66) apScoreEstimate = 4;
+    else if (pct >= 50) apScoreEstimate = 3;
+    else if (pct >= 35) apScoreEstimate = 2;
+
+    return {
+      ...state,
+      submitted: true,
+      score: {
+        correct,
+        total: state.totalQuestions,
+        percentage: pct,
+        apScoreEstimate,
+        unitBreakdown
+      }
+    };
   };
 
-  const handleResetSession = () => {
-    setUserAnswers({});
-    setSubmittedQuestions({});
-    setCurrentQuestionIndex(0);
-    setWarningMessage(null);
+  const handleSubmitMockExam = () => {
+    setMockExam((prev) => handleAutoSubmitExam(prev));
   };
 
-  const handleNext = () => {
-    if (activeQuestionIndex < filteredQuestions.length - 1) {
-      setCurrentQuestionIndex(activeQuestionIndex + 1);
-      setWarningMessage(null);
+  // -------------------------------------------------------------
+  // Handlers: Mistake Targeted Drill
+  // -------------------------------------------------------------
+  const handleStartMistakeDrill = (record: MistakeRecord) => {
+    const variant = generateSimilarQuestion(record.templateId);
+    setActiveDrillMistake({
+      originalRecord: record,
+      variantQuestion: variant,
+      chosenOption: null,
+      isSubmitted: false
+    });
+  };
+
+  const handleSubmitMistakeDrill = () => {
+    if (!activeDrillMistake || !activeDrillMistake.chosenOption) return;
+    const isCorrect =
+      activeDrillMistake.chosenOption === activeDrillMistake.variantQuestion.correctOptionId;
+
+    setActiveDrillMistake((prev) => (prev ? { ...prev, isSubmitted: true } : null));
+
+    if (isCorrect) {
+      setMistakes((prev) =>
+        prev
+          .map((m) => {
+            if (m.questionId === activeDrillMistake.originalRecord.questionId) {
+              return { ...m, consecutiveCorrect: m.consecutiveCorrect + 1 };
+            }
+            return m;
+          })
+          .filter((m) => m.consecutiveCorrect < 2)
+      );
     }
   };
 
-  const handlePrev = () => {
-    if (activeQuestionIndex > 0) {
-      setCurrentQuestionIndex(activeQuestionIndex - 1);
-      setWarningMessage(null);
-    }
+  // Format seconds to MM:SS
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
-
-  if (!currentQ) {
-    return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200">
-        <p className="text-slate-600">No questions found for the selected filter.</p>
-        <button
-          onClick={() => setSelectedUnit(0)}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold"
-        >
-          View All Units
-        </button>
-      </div>
-    );
-  }
-
-  const isSubmitted = submittedQuestions[currentQ.id] || false;
-  const chosenOption = userAnswers[currentQ.id];
-  const isCorrect = chosenOption === currentQ.correctOptionId;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-lg space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-semibold backdrop-blur-sm">
-            <BrainCircuit className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{t.practiceModeTitle}</span>
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Practice Hub Header Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-blue-500/10 blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold backdrop-blur-sm">
+              <BrainCircuit className="w-4 h-4 text-blue-400" />
+              <span>AP Microeconomics Practice Hub</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {activeTab === 'infinite' && dynamicStats.answered > 0 && (
+                <div className="flex items-center gap-2 text-xs font-mono bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+                  <Award className="w-4 h-4 text-amber-300" />
+                  <span>
+                    {language === 'zh' ? '动态练习' : 'Dynamic Session'}: {dynamicStats.correct}/
+                    {dynamicStats.answered} (
+                    {Math.round((dynamicStats.correct / dynamicStats.answered) * 100)}%)
+                  </span>
+                </div>
+              )}
+              {mistakes.length > 0 && (
+                <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  <Flame className="w-3.5 h-3.5 text-rose-400" />
+                  {mistakes.length} {language === 'zh' ? '道待消灭错题' : 'Mistakes to conquer'}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-emerald-200/90 bg-white/10 px-3 py-1 rounded-full">
-            <Award className="w-3.5 h-3.5 text-yellow-300" />
-            <span>
-              {language === 'zh'
-                ? `正确率: ${correctCount} / ${totalAnswered} (${totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0}%)`
-                : `Score: ${correctCount} / ${totalAnswered} (${totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0}%)`}
-            </span>
-          </div>
-        </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            {language === 'zh'
+              ? 'AP 微观经济学智能题库与全真模拟中心'
+              : 'AP Microeconomics Infinite Practice & Exam Simulator'}
+          </h1>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-          {language === 'zh'
-            ? `第 ${currentQ.unit} 单元重点强化自测`
-            : `Unit ${currentQ.unit} Targeted MCQ Practice`}
-        </h1>
-
-        <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
-          {t.practiceModeSubtitle}
-        </p>
-      </div>
-
-      {/* Unit Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mr-2 shrink-0">
-          <Filter className="w-3.5 h-3.5" />
-          <span>{t.filterByUnit}:</span>
-        </div>
-
-        <button
-          onClick={() => {
-            setSelectedUnit(0);
-            setCurrentQuestionIndex(0);
-          }}
-          className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
-            selectedUnit === 0
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          {t.allUnitsFilter}
-        </button>
-
-        {[1, 2, 3, 4, 5, 6].map((u) => (
-          <button
-            key={u}
-            onClick={() => {
-              setSelectedUnit(u);
-              setCurrentQuestionIndex(0);
-            }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
-              selectedUnit === u
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-white border border-slate-200/80 text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            Unit {u}
-          </button>
-        ))}
-      </div>
-
-      {/* Progress & Meta Bar */}
-      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-        <span className="font-semibold text-slate-700">
-          {t.questionNumber} {activeQuestionIndex + 1} / {filteredQuestions.length}
-        </span>
-
-        <span className="font-mono bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold">
-          CED Topic {currentQ.topicCode}
-        </span>
-      </div>
-
-      {/* Question Card */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs space-y-6">
-        {/* Prompt */}
-        <div className="space-y-2">
-          <p className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed font-sans">
-            {tr(currentQ.prompt)}
+          <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+            {language === 'zh'
+              ? '告别机械死记硬背！依托底层数理模拟引擎，题目参数、商品背景与选项实时动态生成，搭配错因智能剖析与错题靶向消除。'
+              : 'Beyond static quizzes! Powered by real-time mathematical economic models, every question dynamically randomizes parameters and scenarios with targeted distractor explanations.'}
           </p>
         </div>
+      </div>
 
-        {/* Options */}
-        <div className="space-y-3">
-          {currentQ.options.map((opt) => {
-            const isSelected = chosenOption === opt.id;
-            let optStyle =
-              'border-slate-200 bg-slate-50/50 hover:bg-slate-100/70 text-slate-800';
+      {/* Main Mode Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200">
+        <button
+          onClick={() => setActiveTab('infinite')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'infinite'
+              ? 'bg-white text-blue-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          <span>{t.practiceTabInfinite}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-mono">
+            {language === 'zh' ? '无限刷题' : 'Infinite'}
+          </span>
+        </button>
 
-            if (isSubmitted) {
-              if (opt.id === currentQ.correctOptionId) {
-                optStyle =
-                  'border-emerald-500 bg-emerald-50/90 text-emerald-950 font-medium ring-1 ring-emerald-500';
-              } else if (isSelected && opt.id !== currentQ.correctOptionId) {
-                optStyle =
-                  'border-red-400 bg-red-50/90 text-red-950 font-medium ring-1 ring-red-400';
-              } else {
-                optStyle = 'border-slate-100 bg-slate-50/30 text-slate-400 opacity-60';
-              }
-            } else if (isSelected) {
-              optStyle =
-                'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-medium ring-1 ring-emerald-600 shadow-xs';
-            }
+        <button
+          onClick={() => setActiveTab('mock')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'mock'
+              ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <Timer className="w-4 h-4 text-indigo-600" />
+          <span>{t.practiceTabMock}</span>
+        </button>
 
-            return (
-              <div
-                key={opt.id}
-                onClick={() => handleSelectOption(opt.id)}
-                className={`p-4 rounded-xl border text-xs sm:text-sm transition-all cursor-pointer flex items-start gap-3.5 ${optStyle}`}
+        <button
+          onClick={() => setActiveTab('mistakes')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative ${
+            activeTab === 'mistakes'
+              ? 'bg-white text-rose-700 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <Flame className="w-4 h-4 text-rose-600" />
+          <span>{t.practiceTabMistakes}</span>
+          {mistakes.length > 0 && (
+            <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2"></span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('classic')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+            activeTab === 'classic'
+              ? 'bg-white text-slate-800 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-slate-600" />
+          <span>{t.practiceTabClassic}</span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 1: INFINITE DYNAMIC PRACTICE (无限动态变式演练) */}
+      {/* ========================================================================= */}
+      {activeTab === 'infinite' && (
+        <div className="space-y-6">
+          {/* Unit Selector Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            <span className="text-xs font-bold text-slate-500 mr-1 shrink-0 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              {t.filterByUnit}:
+            </span>
+            {[0, 1, 2, 3, 4, 5, 6].map((unitNum) => (
+              <button
+                key={unitNum}
+                onClick={() => {
+                  setSelectedUnit(unitNum);
+                  handleLoadNewDynamicQuestion(unitNum);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
+                  selectedUnit === unitNum
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
               >
-                <div className="pt-0.5 shrink-0">
+                {unitNum === 0 ? t.allUnitsFilter : `Unit ${unitNum}`}
+              </button>
+            ))}
+          </div>
+
+          {/* Dynamic Question Card */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden p-6 sm:p-8 space-y-6">
+            {/* Question Header & Meta */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200/60 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  Unit {dynamicQuestion.unit} ({dynamicQuestion.topicCode})
+                </span>
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono bg-slate-100 text-slate-600">
+                  {language === 'zh' ? '动态参数变式' : 'Dynamic Numerical Variant'}
+                </span>
+              </div>
+
+              <button
+                onClick={() => navigateToGraph(dynamicQuestion.topicId)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                <span>{language === 'zh' ? '在交互模型中模拟此题' : 'Simulate in Graph Lab'}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Question Prompt */}
+            <div className="space-y-3">
+              <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed font-sans">
+                {tr(dynamicQuestion.prompt)}
+              </p>
+            </div>
+
+            {/* Multiple Choice Options */}
+            <div className="space-y-3 pt-2">
+              {dynamicQuestion.options.map((opt) => {
+                const isSelected = dynamicAnswer === opt.id;
+                const isOptionCorrect = opt.id === dynamicQuestion.correctOptionId;
+
+                let optCardStyle = 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30';
+                let indicatorStyle = 'border-slate-300 text-slate-600';
+
+                if (isDynamicSubmitted) {
+                  if (isOptionCorrect) {
+                    optCardStyle = 'border-emerald-500 bg-emerald-50/70 ring-1 ring-emerald-500 text-emerald-950';
+                    indicatorStyle = 'bg-emerald-600 text-white border-emerald-600';
+                  } else if (isSelected && !isOptionCorrect) {
+                    optCardStyle = 'border-rose-400 bg-rose-50/70 ring-1 ring-rose-400 text-rose-950';
+                    indicatorStyle = 'bg-rose-600 text-white border-rose-600';
+                  } else {
+                    optCardStyle = 'border-slate-200/70 opacity-60 bg-slate-50/50';
+                  }
+                } else if (isSelected) {
+                  optCardStyle = 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20 text-blue-950';
+                  indicatorStyle = 'bg-blue-600 text-white border-blue-600';
+                }
+
+                return (
                   <div
-                    className={`w-6 h-6 rounded-full border text-xs font-bold flex items-center justify-center transition-colors ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-slate-300 bg-white text-slate-600'
+                    key={opt.id}
+                    onClick={() => {
+                      if (!isDynamicSubmitted) setDynamicAnswer(opt.id);
+                    }}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer ${optCardStyle}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border ${indicatorStyle}`}
+                      >
+                        {opt.id}
+                      </div>
+                      <div className="flex-1 pt-0.5 space-y-2">
+                        <span className="text-sm sm:text-base font-medium">
+                          {tr(opt.text)}
+                        </span>
+
+                        {/* Option explanation revealed after submission */}
+                        {isDynamicSubmitted && (
+                          <div
+                            className={`text-xs leading-relaxed pt-2 border-t mt-2 ${
+                              isOptionCorrect
+                                ? 'text-emerald-800 border-emerald-200/60'
+                                : isSelected
+                                ? 'text-rose-800 border-rose-200/60'
+                                : 'text-slate-600 border-slate-200/60'
+                            }`}
+                          >
+                            <span className="font-bold mr-1">
+                              {isOptionCorrect ? '✓ [正确依据]' : '✗ [辨析与错因]'}:
+                            </span>
+                            {tr(opt.explanation)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Answer Control / Next Question Bar */}
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              {!isDynamicSubmitted ? (
+                <button
+                  onClick={handleSubmitDynamicAnswer}
+                  disabled={!dynamicAnswer}
+                  className={`px-6 py-3 rounded-2xl font-bold text-sm shadow-sm transition-all flex items-center gap-2 ${
+                    dynamicAnswer
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer hover:shadow'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  <span>{t.checkAnswerBtn}</span>
+                </button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={handleGenerateSimilar}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4 text-indigo-600" />
+                    <span>{t.generateSimilarBtn}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleLoadNewDynamicQuestion()}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm bg-blue-600 hover:bg-blue-700 text-white transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <span>{t.generateNextDynamicBtn}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Comprehensive Explanation & Pro-Tips after submission */}
+            {isDynamicSubmitted && (
+              <div className="pt-4 space-y-4">
+                <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200/60 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-sm text-blue-900">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                    <span>{language === 'zh' ? '全解全析与核心逻辑推导' : 'Detailed Solution & Economic Logic'}</span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-sans">
+                    {tr(dynamicQuestion.overallExplanation)}
+                  </p>
+                </div>
+
+                {dynamicQuestion.commonMistakeAlert && (
+                  <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs sm:text-sm text-amber-900 space-y-1">
+                    <span className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      {t.commonMistakesHeader}
+                    </span>
+                    <p className="text-slate-700 leading-relaxed pl-5">
+                      {tr(dynamicQuestion.commonMistakeAlert)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: AP MOCK EXAM SIMULATION (全真模拟考) */}
+      {/* ========================================================================= */}
+      {activeTab === 'mock' && (
+        <div className="space-y-6">
+          {!mockExam.isActive ? (
+            // Pre-Exam Setup Card
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 text-center space-y-6 max-w-2xl mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
+                <Trophy className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {language === 'zh' ? 'AP 微观经济学考前全真模拟试卷' : 'AP Micro Full Exam Simulation'}
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
+                  {language === 'zh'
+                    ? '根据大学理事会 AP 微观官方考纲各单元考查权重，随机抽取并配比题目，实时倒计时仿真，考后生成 6 单元诊断报告与预估 AP 得分。'
+                    : 'Generated based on official College Board AP Micro CED exam weights with a timed test experience and comprehensive 6-unit diagnostic breakdown.'}
+                </p>
+              </div>
+
+              {/* Length selector */}
+              <div className="flex justify-center gap-3">
+                {[
+                  { count: 15, time: '18 min', label: language === 'zh' ? '15 题 · 快速小测' : '15 Qs · Quick Check' },
+                  { count: 30, time: '35 min', label: language === 'zh' ? '30 题 · 半套模考' : '30 Qs · Half Exam' },
+                  { count: 60, time: '70 min', label: language === 'zh' ? '60 题 · 全真大考' : '60 Qs · Full Exam' }
+                ].map((item) => (
+                  <button
+                    key={item.count}
+                    onClick={() => setSelectedExamLength(item.count)}
+                    className={`p-3.5 rounded-2xl border text-xs sm:text-sm font-bold transition-all text-center flex-1 max-w-[150px] ${
+                      selectedExamLength === item.count
+                        ? 'border-indigo-600 bg-indigo-50/80 text-indigo-900 ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
                     }`}
                   >
-                    {opt.id}
+                    <div>{item.label}</div>
+                    <div className="text-[11px] font-mono text-slate-400 mt-1">{item.time}</div>
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => handleStartMockExam(selectedExamLength)}
+                className="px-8 py-3.5 rounded-2xl font-bold text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all flex items-center justify-center gap-2 mx-auto cursor-pointer"
+              >
+                <Timer className="w-4 h-4" />
+                <span>{t.startMockExamBtn}</span>
+              </button>
+            </div>
+          ) : !mockExam.submitted ? (
+            // Active Exam In Progress
+            <div className="space-y-6">
+              {/* Exam Top Bar with Timer and Progress */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-slate-800">
+                    {language === 'zh' ? '模拟考试进行中' : 'Mock Exam in Progress'}
+                  </span>
+                  <span className="text-xs text-slate-500 font-mono">
+                    ({Object.keys(mockExam.userAnswers).length} / {mockExam.totalQuestions} {language === 'zh' ? '已作答' : 'Answered'})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold ${
+                      mockExam.timeRemainingSeconds < 300
+                        ? 'bg-rose-50 text-rose-600 border border-rose-200 animate-pulse'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <Timer className="w-3.5 h-3.5" />
+                    <span>{formatTime(mockExam.timeRemainingSeconds)}</span>
+                  </div>
+
+                  <button
+                    onClick={handleSubmitMockExam}
+                    className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all"
+                  >
+                    {language === 'zh' ? '交卷核分' : 'Submit Exam'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Question Grid Navigator */}
+              <div className="flex flex-wrap gap-1.5 p-3 bg-white rounded-2xl border border-slate-200">
+                {mockExam.questions.map((q, idx) => {
+                  const isAnswered = mockExam.userAnswers[q.id] !== undefined;
+                  const isCurrent = idx === activeMockIndex;
+
+                  let btnStyle = 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+                  if (isAnswered) btnStyle = 'bg-indigo-100 text-indigo-700 font-bold border border-indigo-300';
+                  if (isCurrent) btnStyle = 'bg-indigo-600 text-white font-bold ring-2 ring-indigo-500/30';
+
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => setActiveMockIndex(idx)}
+                      className={`w-8 h-8 rounded-lg text-xs font-mono transition-all ${btnStyle}`}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Exam Question */}
+              {mockExam.questions[activeMockIndex] && (
+                <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <span className="text-xs font-bold text-indigo-600">
+                      Question {activeMockIndex + 1} of {mockExam.totalQuestions} · Unit{' '}
+                      {mockExam.questions[activeMockIndex].unit}
+                    </span>
+                  </div>
+
+                  <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
+                    {tr(mockExam.questions[activeMockIndex].prompt)}
+                  </p>
+
+                  <div className="space-y-3 pt-2">
+                    {mockExam.questions[activeMockIndex].options.map((opt) => {
+                      const qId = mockExam.questions[activeMockIndex].id;
+                      const isSelected = mockExam.userAnswers[qId] === opt.id;
+
+                      return (
+                        <div
+                          key={opt.id}
+                          onClick={() => {
+                            setMockExam((prev) => ({
+                              ...prev,
+                              userAnswers: { ...prev.userAnswers, [qId]: opt.id }
+                            }));
+                          }}
+                          className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
+                            isSelected
+                              ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-500/20 text-indigo-950'
+                              : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50/50'
+                          }`}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 border ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'border-slate-300 text-slate-600'
+                            }`}
+                          >
+                            {opt.id}
+                          </div>
+                          <span className="text-sm sm:text-base font-medium pt-0.5">
+                            {tr(opt.text)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Navigator Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <button
+                      onClick={() => setActiveMockIndex(Math.max(0, activeMockIndex - 1))}
+                      disabled={activeMockIndex === 0}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
+                        activeMockIndex === 0
+                          ? 'opacity-40 cursor-not-allowed text-slate-400'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>{t.prevQuestionBtn}</span>
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setActiveMockIndex(
+                          Math.min(mockExam.totalQuestions - 1, activeMockIndex + 1)
+                        )
+                      }
+                      disabled={activeMockIndex === mockExam.totalQuestions - 1}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
+                        activeMockIndex === mockExam.totalQuestions - 1
+                          ? 'opacity-40 cursor-not-allowed text-slate-400'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      }`}
+                    >
+                      <span>{t.nextQuestionBtn}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Exam Results & Performance Diagnostic
+            <div className="space-y-6">
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      {t.mockExamComplete}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                      {language === 'zh'
+                        ? '恭喜完成全套模拟答题！查看你的各单元得分率与能力画像：'
+                        : 'Congratulations on finishing the simulation! Review your performance report below:'}
+                    </p>
+                  </div>
+
+                  {/* Big AP Score Card */}
+                  <div className="flex items-center gap-4 bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-200/80 p-4 rounded-2xl">
+                    <div className="text-center">
+                      <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                        {t.estimatedApScore}
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-extrabold text-indigo-900 font-mono">
+                        {mockExam.score?.apScoreEstimate} <span className="text-lg">/ 5</span>
+                      </div>
+                    </div>
+                    <div className="h-10 w-px bg-indigo-200"></div>
+                    <div className="text-center">
+                      <div className="text-xs font-bold text-slate-500">
+                        {language === 'zh' ? '综合得分率' : 'Accuracy'}
+                      </div>
+                      <div className="text-xl sm:text-2xl font-bold text-slate-800 font-mono">
+                        {mockExam.score?.correct} / {mockExam.score?.total} (
+                        {mockExam.score?.percentage}%)
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <span className="leading-relaxed font-sans">{tr(opt.text)}</span>
-                  {isSubmitted && (
-                    <p className="text-xs mt-1.5 leading-relaxed opacity-90 border-t border-slate-200/50 pt-1.5">
-                      {tr(opt.explanation)}
-                    </p>
-                  )}
+                {/* Unit by Unit Diagnostic Bars */}
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm text-slate-800">
+                    {language === 'zh' ? '各单元能力诊断细分' : 'Unit-by-Unit Diagnostic Breakdown'}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[1, 2, 3, 4, 5, 6].map((u) => {
+                      const data = mockExam.score?.unitBreakdown[u] || { correct: 0, total: 0 };
+                      const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                      return (
+                        <div key={u} className="p-3 rounded-xl border border-slate-100 bg-slate-50/70 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-700">Unit {u}</span>
+                            <span className="font-mono text-slate-600">
+                              {data.correct} / {data.total} ({pct}%)
+                            </span>
+                          </div>
+                          <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                pct >= 80 ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                              }`}
+                              style={{ width: `${pct}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Restart Mock Button */}
+                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                  <button
+                    onClick={() => handleStartMockExam(selectedExamLength)}
+                    className="px-6 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>{language === 'zh' ? '再刷一套全新变式模考' : 'Start Another Mock Exam'}</span>
+                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Warning Banner */}
-        {warningMessage && (
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
-            <span>{warningMessage}</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {!isSubmitted ? (
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              onClick={handleSubmitAnswer}
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-all flex items-center gap-2 active:scale-95"
-            >
-              <span>{t.checkAnswerBtn}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-5 pt-2 border-t border-slate-100">
-            {/* Feedback Banner */}
-            <div
-              className={`p-4 rounded-xl border flex items-start gap-3 ${
-                isCorrect
-                  ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
-                  : 'bg-red-50 border-red-300 text-red-950'
-              }`}
-            >
-              {isCorrect ? (
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-              )}
-              <div className="text-xs sm:text-sm space-y-1 font-sans">
-                <p className="font-bold">
-                  {isCorrect ? (
-                    language === 'zh' ? '回答正确！掌握了核心考点。' : 'Correct! You mastered this key concept.'
-                  ) : (
-                    language === 'zh' ? '回答有误，请仔细阅读下方的错因拆解与考点提示。' : 'Incorrect. Check the explanation and common traps below.'
-                  )}
-                </p>
-                <p className="text-xs leading-relaxed opacity-90">
-                  {tr(currentQ.overallExplanation)}
-                </p>
-              </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Common Mistake Alert */}
-            {currentQ.commonMistakeAlert && (
-              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/90 space-y-1.5 text-xs text-amber-950 font-sans">
-                <span className="font-bold flex items-center gap-1.5 text-amber-800 uppercase tracking-wider text-[11px]">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>{t.commonMistakesHeader}</span>
+      {/* ========================================================================= */}
+      {/* TAB 3: MISTAKE NOTEBOOK (智能错题消灭本) */}
+      {/* ========================================================================= */}
+      {activeTab === 'mistakes' && (
+        <div className="space-y-6">
+          {activeDrillMistake ? (
+            // Targeted Drill Card for Single Mistake
+            <div className="bg-white rounded-3xl border border-rose-200 shadow-md p-6 sm:p-8 space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-rose-100">
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-rose-600" />
+                  {language === 'zh' ? '错题靶向变式强化' : 'Mistake Targeted Variant'}
                 </span>
-                <p className="leading-relaxed pl-5">
-                  {tr(currentQ.commonMistakeAlert)}
-                </p>
-              </div>
-            )}
-
-            {/* Navigation and Next controls */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <div className="flex items-center gap-2">
                 <button
-                  disabled={activeQuestionIndex === 0}
-                  onClick={handlePrev}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                    activeQuestionIndex === 0
-                      ? 'text-slate-300 border border-slate-100 cursor-not-allowed'
-                      : 'text-slate-700 border border-slate-200 hover:bg-slate-50'
-                  }`}
+                  onClick={() => setActiveDrillMistake(null)}
+                  className="text-xs text-slate-500 hover:text-slate-800 underline"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>{t.prevQuestionBtn}</span>
-                </button>
-
-                <button
-                  onClick={handleRetryQuestion}
-                  className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>{t.retryQuestionBtn}</span>
+                  {language === 'zh' ? '返回错题列表' : 'Back to Mistake List'}
                 </button>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigateToGraph(currentQ.topicId, currentQ.topicId)}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900"
-                >
-                  <span>{t.openGraph}</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
+              <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
+                {tr(activeDrillMistake.variantQuestion.prompt)}
+              </p>
 
-                {activeQuestionIndex < filteredQuestions.length - 1 ? (
+              <div className="space-y-3 pt-2">
+                {activeDrillMistake.variantQuestion.options.map((opt) => {
+                  const isSelected = activeDrillMistake.chosenOption === opt.id;
+                  const isCorrect =
+                    opt.id === activeDrillMistake.variantQuestion.correctOptionId;
+
+                  let optStyle = 'border-slate-200 hover:border-rose-300';
+                  if (activeDrillMistake.isSubmitted) {
+                    if (isCorrect) optStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold';
+                    else if (isSelected) optStyle = 'border-rose-500 bg-rose-50 text-rose-950';
+                  } else if (isSelected) {
+                    optStyle = 'border-rose-600 bg-rose-50/60 ring-2 ring-rose-500/20';
+                  }
+
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (!activeDrillMistake.isSubmitted) {
+                          setActiveDrillMistake((prev) =>
+                            prev ? { ...prev, chosenOption: opt.id } : null
+                          );
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${optStyle}`}
+                    >
+                      <div className="w-6 h-6 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0">
+                        {opt.id}
+                      </div>
+                      <div className="flex-1">
+                        <span>{tr(opt.text)}</span>
+                        {activeDrillMistake.isSubmitted && (
+                          <div className="text-xs mt-1 text-slate-600 pt-1 border-t border-slate-100">
+                            {tr(opt.explanation)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
+                {!activeDrillMistake.isSubmitted ? (
                   <button
-                    onClick={handleNext}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs flex items-center gap-2 transition-all active:scale-95"
+                    onClick={handleSubmitMistakeDrill}
+                    disabled={!activeDrillMistake.chosenOption}
+                    className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs"
                   >
-                    <span>{t.nextQuestionBtn}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    {t.checkAnswerBtn}
                   </button>
                 ) : (
                   <button
-                    onClick={handleResetSession}
-                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-xs transition-all"
+                    onClick={() => setActiveDrillMistake(null)}
+                    className="px-6 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs"
                   >
-                    {t.resetPracticeSessionBtn}
+                    {language === 'zh' ? '完成复习' : 'Done with Drill'}
                   </button>
                 )}
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          ) : mistakes.length === 0 ? (
+            // Empty Mistake Book
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-12 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">
+                {language === 'zh' ? '错题本空空如也，保持得太棒了！' : 'Mistake Notebook is Empty! Great Job!'}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+                {language === 'zh'
+                  ? '在“无限动态变式演练”中答错的题目会自动收集到这里，并提供专属相似变式题消灭训练。'
+                  : 'Questions you miss in practice will be automatically cataloged here for targeted elimination drills.'}
+              </p>
+            </div>
+          ) : (
+            // Mistake List
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-slate-500 pb-2">
+                <span>
+                  {language === 'zh'
+                    ? `已记录 ${mistakes.length} 道待强化的易错考点（连对 2 次同类变式即可彻底攻克消除）：`
+                    : `${mistakes.length} concepts to review (Answer 2 similar variants correctly to clear):`}
+                </span>
+                <button
+                  onClick={() => setMistakes([])}
+                  className="text-rose-600 hover:underline cursor-pointer"
+                >
+                  {language === 'zh' ? '清空全部错题' : 'Clear All Mistakes'}
+                </button>
+              </div>
 
-      {/* Session Question Navigator Dots */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-          <span>{language === 'zh' ? '全卷试题快速导航' : 'Question Quick Navigator'}</span>
-          <button
-            onClick={handleResetSession}
-            className="text-[11px] text-slate-400 hover:text-slate-600 font-normal"
-          >
-            {t.resetPracticeSessionBtn}
-          </button>
+              {mistakes.map((m) => (
+                <div
+                  key={m.questionId}
+                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3 hover:border-slate-300 transition-all"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      Unit {m.unit} ({m.topicCode})
+                    </span>
+                    <button
+                      onClick={() => handleStartMistakeDrill(m)}
+                      className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                      <Flame className="w-3.5 h-3.5" />
+                      <span>{t.clearMistakeBtn}</span>
+                    </button>
+                  </div>
+
+                  <p className="text-sm font-medium text-slate-800 leading-relaxed">
+                    {tr(m.prompt)}
+                  </p>
+
+                  <div className="text-xs p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-700 space-y-1">
+                    <div className="text-rose-700 font-medium">
+                      ❌ {language === 'zh' ? '当时错选项' : 'Your Answer'}: {m.userWrongOptionId} |{' '}
+                      ✅ {language === 'zh' ? '正确答案' : 'Correct'}: {m.correctOptionId}
+                    </div>
+                    <div className="text-slate-600 leading-relaxed pt-1">
+                      {tr(m.explanation)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      )}
 
-        <div className="flex flex-wrap gap-2">
-          {filteredQuestions.map((q, idx) => {
-            const isCurrent = idx === activeQuestionIndex;
-            const submitted = submittedQuestions[q.id];
-            const correct = userAnswers[q.id] === q.correctOptionId;
-
-            let dotStyle = 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200';
-            if (submitted) {
-              dotStyle = correct
-                ? 'bg-emerald-500 text-white border-emerald-600'
-                : 'bg-red-500 text-white border-red-600';
-            } else if (isCurrent) {
-              dotStyle = 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300';
-            }
-
-            return (
+      {/* ========================================================================= */}
+      {/* TAB 4: CLASSIC CURATED QUESTIONS (精选固定真题库) */}
+      {/* ========================================================================= */}
+      {activeTab === 'classic' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+            <span className="text-xs font-bold text-slate-500 mr-1 shrink-0 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              {t.filterByUnit}:
+            </span>
+            {[0, 1, 2, 3, 4, 5, 6].map((unitNum) => (
               <button
-                key={q.id}
+                key={unitNum}
                 onClick={() => {
-                  setCurrentQuestionIndex(idx);
-                  setWarningMessage(null);
+                  setSelectedUnit(unitNum);
+                  setClassicIndex(0);
                 }}
-                className={`w-8 h-8 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${dotStyle}`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
+                  selectedUnit === unitNum
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
               >
-                {idx + 1}
+                {unitNum === 0 ? t.allUnitsFilter : `Unit ${unitNum}`}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {currentClassic && (
+            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <span className="text-xs font-bold text-blue-600">
+                  Question {classicIndex + 1} of {filteredClassic.length} · Unit {currentClassic.unit}
+                </span>
+                <button
+                  onClick={() => navigateToGraph(currentClassic.topicId)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+                >
+                  <span>{t.openGraph}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
+                {tr(currentClassic.prompt)}
+              </p>
+
+              <div className="space-y-3 pt-2">
+                {currentClassic.options.map((opt) => {
+                  const isSubmitted = classicSubmitted[currentClassic.id];
+                  const isSelected = classicAnswers[currentClassic.id] === opt.id;
+                  const isCorrect = opt.id === currentClassic.correctOptionId;
+
+                  let style = 'border-slate-200 hover:border-blue-300';
+                  if (isSubmitted) {
+                    if (isCorrect) style = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold';
+                    else if (isSelected) style = 'border-rose-400 bg-rose-50 text-rose-950';
+                  } else if (isSelected) {
+                    style = 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20';
+                  }
+
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (!isSubmitted) {
+                          setClassicAnswers((prev) => ({
+                            ...prev,
+                            [currentClassic.id]: opt.id
+                          }));
+                        }
+                      }}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${style}`}
+                    >
+                      <div className="w-6 h-6 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0">
+                        {opt.id}
+                      </div>
+                      <div className="flex-1">
+                        <span>{tr(opt.text)}</span>
+                        {isSubmitted && (
+                          <div className="text-xs mt-1 text-slate-600 pt-1 border-t border-slate-100">
+                            {tr(opt.explanation)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => setClassicIndex(Math.max(0, classicIndex - 1))}
+                  disabled={classicIndex === 0}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 disabled:opacity-30"
+                >
+                  {t.prevQuestionBtn}
+                </button>
+
+                {!classicSubmitted[currentClassic.id] ? (
+                  <button
+                    onClick={() => {
+                      if (classicAnswers[currentClassic.id]) {
+                        setClassicSubmitted((prev) => ({
+                          ...prev,
+                          [currentClassic.id]: true
+                        }));
+                      }
+                    }}
+                    disabled={!classicAnswers[currentClassic.id]}
+                    className="px-6 py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white disabled:opacity-40"
+                  >
+                    {t.checkAnswerBtn}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() =>
+                      setClassicIndex(
+                        Math.min(filteredClassic.length - 1, classicIndex + 1)
+                      )
+                    }
+                    disabled={classicIndex === filteredClassic.length - 1}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white disabled:opacity-30"
+                  >
+                    {t.nextQuestionBtn}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 };

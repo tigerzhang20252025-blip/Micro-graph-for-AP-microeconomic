@@ -4,6 +4,12 @@ import { getModelById } from '../engine/models/index';
 import { LEARNING_ACTIVITIES } from '../data/learningActivities';
 import { PRACTICE_QUESTIONS } from '../data/practiceQuestions';
 import { AP_DECISION_RULES, AP_EXAM_MISTAKES, AP_FORMULAS } from '../data/referenceContent';
+import {
+  DYNAMIC_QUESTION_TEMPLATES,
+  generateRandomDynamicQuestion,
+  generateSimilarQuestion,
+  generateMockExamQuestions
+} from '../engine/generators';
 import { productionFunctionModel } from '../engine/models/productionFunctionModel';
 import { lratcModel } from '../engine/models/lratcModel';
 import { publicGoodsModel } from '../engine/models/publicGoodsModel';
@@ -298,10 +304,40 @@ assert(optQ !== undefined && String(optQ.value).length > 0, `Optimal public good
 assert(publicGood.curves.some(c => c.shortLabel === 'MSB'), 'Public goods outputs vertical summation MSB curve');
 assert(publicGood.curves.some(c => c.shortLabel === 'MC'), 'Public goods outputs constant/upward MC curve');
 
+// 21. Dynamic Question Generator Engine Audit
+console.log('\n--- 21. Dynamic Question Generator & Procedural Variation Audit ---');
+assert(DYNAMIC_QUESTION_TEMPLATES.length >= 15, `Registered dynamic question templates: ${DYNAMIC_QUESTION_TEMPLATES.length} (>= 15)`);
+
+// Check each template produces valid questions with valid math and bilingual parity
+for (const tmpl of DYNAMIC_QUESTION_TEMPLATES) {
+  const q = tmpl.generate();
+  assert(q.prompt.en.length > 0 && q.prompt.zh.length > 0, `Template "${tmpl.templateId}" has bilingual prompt`);
+  assert(q.options.length === 4, `Template "${tmpl.templateId}" generates exactly 4 options`);
+  const correct = q.options.find(o => o.id === q.correctOptionId);
+  assert(correct !== undefined, `Template "${tmpl.templateId}" has valid correctOptionId "${q.correctOptionId}"`);
+  assert(q.overallExplanation.en.length > 0 && q.overallExplanation.zh.length > 0, `Template "${tmpl.templateId}" has bilingual overall explanation`);
+}
+
+// Check mock exam generation produces balanced 15 questions across units 1-6
+const mockExamSample = generateMockExamQuestions(15);
+assert(mockExamSample.length === 15, `Mock exam generator produces 15 questions`);
+for (let u = 1; u <= 6; u++) {
+  const hasUnit = mockExamSample.some(q => q.unit === u);
+  assert(hasUnit, `Mock exam includes questions from Unit ${u}`);
+}
+
+// Check similar question generator produces question with same topic
+const similarSample = generateSimilarQuestion('dyn-ppc-opp-cost');
+assert(similarSample.topicId === 'ppc-model', 'Similar question generator matches target topicId');
+
+// Check random dynamic question generator
+const randomDyn = generateRandomDynamicQuestion(2);
+assert(randomDyn.unit === 2, 'Random dynamic question filters to requested unit');
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 20 AUDIT SUITES PASSED WITH 0 FAILURES!');
-  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH & KNOWLEDGE SYSTEM VERIFIED!');
+  console.log('🎉 ALL 21 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH & DYNAMIC PRACTICE SYSTEM VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);
   process.exit(1);

@@ -99,6 +99,17 @@ export interface Translations {
   allUnitsFilter: string;
   practiceCompletedTitle: string;
   practiceCompletedDesc: string;
+  practiceTabInfinite: string;
+  practiceTabClassic: string;
+  practiceTabMock: string;
+  practiceTabMistakes: string;
+  generateSimilarBtn: string;
+  generateNextDynamicBtn: string;
+  clearMistakeBtn: string;
+  startMockExamBtn: string;
+  mockExamComplete: string;
+  estimatedApScore: string;
+  timeRemaining: string;
 
   // Reference Mode
   refTabGlossary: string;
@@ -253,6 +264,17 @@ export const translations: Record<Language, Translations> = {
     allUnitsFilter: 'All Units (1–6)',
     practiceCompletedTitle: 'Practice Set Completed!',
     practiceCompletedDesc: 'Great job! You have completed all questions in this set.',
+    practiceTabInfinite: 'Infinite Dynamic Drills',
+    practiceTabClassic: 'Curated AP Questions',
+    practiceTabMock: 'AP Exam Simulation',
+    practiceTabMistakes: 'Mistake Notebook',
+    generateSimilarBtn: 'Generate Similar Variant',
+    generateNextDynamicBtn: 'Next Random Question →',
+    clearMistakeBtn: 'Targeted Drill & Eliminate',
+    startMockExamBtn: 'Start AP Timed Simulation',
+    mockExamComplete: 'Mock Exam Completed!',
+    estimatedApScore: 'Estimated AP Score',
+    timeRemaining: 'Time Remaining',
 
     // Reference Mode
     refTabGlossary: 'AP Glossary',
@@ -405,6 +427,17 @@ export const translations: Record<Language, Translations> = {
     allUnitsFilter: '全单元（1–6）',
     practiceCompletedTitle: '本套练习已全部完成！',
     practiceCompletedDesc: '太棒了！你已顺利答完当前筛选条件下的全部练习题目。',
+    practiceTabInfinite: '无限动态变式演练',
+    practiceTabClassic: '精选历年真题库',
+    practiceTabMock: 'AP 微观全真模考',
+    practiceTabMistakes: '智能错题消灭本',
+    generateSimilarBtn: '再来一道同考点相似变式',
+    generateNextDynamicBtn: '生成下一道随机题目 →',
+    clearMistakeBtn: '同类变式靶向消灭',
+    startMockExamBtn: '开始全真计时模拟考',
+    mockExamComplete: '模拟考试顺利完成！',
+    estimatedApScore: '预估 AP 得分',
+    timeRemaining: '剩余时间',
 
     // Reference Mode
     refTabGlossary: '核心中英术语词汇表',

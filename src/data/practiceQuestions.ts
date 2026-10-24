@@ -18,6 +18,8 @@ export interface PracticeQuestion {
   overallExplanation: BilingualText;
   commonMistakeAlert?: BilingualText;
   examTip?: BilingualText;
+  isDynamic?: boolean;
+  templateId?: string;
 }
 
 export const PRACTICE_QUESTIONS: PracticeQuestion[] = [
