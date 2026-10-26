@@ -139,6 +139,15 @@ export const monopolisticCompModel: EconomicModel = {
     const atcStar = FC / qStar + 10 + 0.5 * mcSlope * qStar;
     const profit = (pStar - atcStar) * qStar;
 
+    // Socially optimal benchmark (P = MC / Allocative Efficiency)
+    const qSO = (a - 10) / (b + mcSlope);
+    const pSO = a - b * qSO;
+
+    // Welfare Calculations
+    const cs = Math.max(0, 0.5 * (a - pStar) * qStar);
+    const dwl = Math.max(0, 0.5 * (pStar - mcStar) * (qSO - qStar));
+    const ps = Math.max(0, (pStar - 10 - 0.5 * mcSlope * qStar) * qStar);
+
     const qMes = Math.sqrt((2 * FC) / mcSlope);
     const minAtc = FC / qMes + 10 + 0.5 * mcSlope * qMes;
 
@@ -287,16 +296,45 @@ export const monopolisticCompModel: EconomicModel = {
         label: { en: `Min ATC (MES = ${qMes.toFixed(1)})`, zh: `最低 ATC（有效规模 = ${qMes.toFixed(1)}）` },
         color: '#059669',
         showDropLines: true
+      },
+      {
+        id: 'social-opt-pt',
+        x: Number(qSO.toFixed(1)),
+        y: Number(pSO.toFixed(1)),
+        shortLabel: 'P=MC',
+        label: { en: `Allocatively Efficient (Q_so = ${qSO.toFixed(1)}, P = $${pSO.toFixed(1)})`, zh: `配置效率点（Q_so = ${qSO.toFixed(1)}, P = $${pSO.toFixed(1)}）` },
+        color: '#059669',
+        showDropLines: false
       }
     ];
 
     const shadedAreas: ShadedAreaSpec[] = [];
 
-    if (Math.abs(profit) > 5) {
+    // Consumer Surplus (CS)
+    if (cs > 0.5) {
+      shadedAreas.push({
+        id: 'cs',
+        label: { en: `Consumer Surplus ($${cs.toFixed(1)})`, zh: `消费者剩余（$${cs.toFixed(1)}）` },
+        points: [
+          { x: 0, y: a },
+          { x: qStar, y: pStar },
+          { x: 0, y: pStar }
+        ],
+        fill: '#3b82f6',
+        opacity: 0.22,
+        pattern: 'diagonal-right',
+        value: Number(cs.toFixed(1)),
+        valuePrefix: '$',
+        visible: true
+      });
+    }
+
+    // Economic Profit / Loss Rectangle
+    if (Math.abs(profit) > 2) {
       if (profit > 0) {
         shadedAreas.push({
           id: 'profit-rect',
-          label: { en: `Economic Profit (+$${profit.toFixed(0)})`, zh: `超额经济利润 (+$${profit.toFixed(0)})` },
+          label: { en: `Economic Profit (+$${profit.toFixed(1)})`, zh: `超额经济利润 (+$${profit.toFixed(1)})` },
           points: [
             { x: 0, y: atcStar },
             { x: qStar, y: atcStar },
@@ -305,12 +343,15 @@ export const monopolisticCompModel: EconomicModel = {
           ],
           fill: '#10b981',
           opacity: 0.25,
+          pattern: 'dots',
+          value: Number(profit.toFixed(1)),
+          valuePrefix: '+$',
           visible: true
         });
       } else {
         shadedAreas.push({
           id: 'loss-rect',
-          label: { en: `Economic Loss (-$${Math.abs(profit).toFixed(0)})`, zh: `经济亏损 (-$${Math.abs(profit).toFixed(0)})` },
+          label: { en: `Economic Loss (-$${Math.abs(profit).toFixed(1)})`, zh: `经济亏损 (-$${Math.abs(profit).toFixed(1)})` },
           points: [
             { x: 0, y: pStar },
             { x: qStar, y: pStar },
@@ -319,9 +360,31 @@ export const monopolisticCompModel: EconomicModel = {
           ],
           fill: '#ef4444',
           opacity: 0.25,
+          pattern: 'cross',
+          value: Number(Math.abs(profit).toFixed(1)),
+          valuePrefix: '-$',
           visible: true
         });
       }
+    }
+
+    // Deadweight Loss (DWL) - Persists in both short run and long run!
+    if (dwl > 0.5) {
+      shadedAreas.push({
+        id: 'dwl',
+        label: { en: `Deadweight Loss ($${dwl.toFixed(1)})`, zh: `社会无谓损失（$${dwl.toFixed(1)}）` },
+        points: [
+          { x: qStar, y: pStar },
+          { x: qSO, y: pSO },
+          { x: qStar, y: mcStar }
+        ],
+        fill: '#ef4444',
+        opacity: 0.35,
+        pattern: 'cross',
+        value: Number(dwl.toFixed(1)),
+        valuePrefix: '$',
+        visible: true
+      });
     }
 
     const results = [
@@ -340,17 +403,32 @@ export const monopolisticCompModel: EconomicModel = {
         formula: 'P(Q*) on Demand'
       },
       {
-        id: 'atcVal',
-        label: { en: 'Average Total Cost (ATC)', zh: '平均总成本（ATC）' },
-        value: `$${atcStar.toFixed(2)}`,
-        color: '#d97706'
+        id: 'csVal',
+        label: { en: 'Consumer Surplus (CS)', zh: '消费者剩余（CS）' },
+        value: `$${cs.toFixed(1)}`,
+        color: '#2563eb',
+        formula: '1/2 × (a - P*) × Q*'
+      },
+      {
+        id: 'psVal',
+        label: { en: 'Producer Surplus (PS)', zh: '生产者剩余（PS）' },
+        value: `$${ps.toFixed(1)}`,
+        color: '#f59e0b',
+        formula: 'TR - TVC = Profit + FC'
       },
       {
         id: 'profitVal',
         label: { en: 'Economic Profit / (Loss)', zh: '经济利润 / （亏损）' },
         value: profit >= 0 ? `+$${profit.toFixed(2)}` : `-$${Math.abs(profit).toFixed(2)}`,
         color: Math.abs(profit) < 2 ? '#059669' : profit > 0 ? '#16a34a' : '#dc2626',
-        formula: '(P - ATC) × Q*'
+        formula: Math.abs(profit) < 2 ? '(P - ATC) × Q* = $0 (Normal Profit)' : '(P - ATC) × Q*'
+      },
+      {
+        id: 'dwlVal',
+        label: { en: 'Deadweight Loss (DWL)', zh: '社会无谓损失（DWL）' },
+        value: `$${dwl.toFixed(1)}`,
+        color: '#dc2626',
+        formula: '1/2 × (P* - MC) × (Q_so - Q*)'
       },
       {
         id: 'excessCapVal',

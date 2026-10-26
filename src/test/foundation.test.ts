@@ -86,6 +86,16 @@ assert(baseEq.results.find(r => r.id === 'eqPrice')?.value === '$50.00', 'Market
 const taxedEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 16, subsidyPerUnit: 0, priceControlMode: 'none', controlledPrice: 50, showBaselineComparison: false });
 assert(taxedEq.results.find(r => r.id === 'dwl')?.value === '$80.00', 'Tax DWL = $80.00');
 
+const ceilingEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'ceiling', controlledPrice: 40, showBaselineComparison: false });
+const ceilingDWL = ceilingEq.shadedAreas.find(s => s.id === 'dwl');
+assert(ceilingDWL !== undefined && ceilingDWL.points.length === 3, 'Binding price ceiling generates non-degenerate DWL triangle');
+const ceilingCS = ceilingEq.shadedAreas.find(s => s.id === 'cs');
+assert(ceilingCS !== undefined && ceilingCS.points.length === 4, 'Binding price ceiling yields 4-point trapezoid Consumer Surplus');
+
+const floorEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 0, priceControlMode: 'floor', controlledPrice: 60, showBaselineComparison: false });
+const floorPS = floorEq.shadedAreas.find(s => s.id === 'ps');
+assert(floorPS !== undefined && floorPS.points.length === 4, 'Binding price floor yields 4-point trapezoid Producer Surplus');
+
 const elasticityMid = elasticityModel.calculate({ priceLevel: 50, demandIntercept: 100, demandSlope: -1.0, crossPricePercentage: 10, crossGoodType: 'substitute', incomePercentage: 10, incomeGoodType: 'normal_necessity' });
 assert(elasticityMid.results.find(r => r.id === 'pedValue')?.value === '1.00', 'Demand Midpoint |PED| = 1.00');
 assert(elasticityMid.secondaryGraph !== undefined, 'Elasticity outputs secondary Total Revenue parabola');
@@ -123,6 +133,8 @@ assert(String(pcShutdown.results.find(r => r.id === 'firmQResult')?.value).inclu
 
 const pcLongRun = perfectCompetitionModel.calculate({ marketDemandShift: 0, firmFixedCost: 110, firmEntryExitAdjustment: 0 });
 assert(String(pcLongRun.results.find(r => r.id === 'longRunStatus')?.value).includes('Long-Run Equilibrium') || Math.abs(Number(String(pcLongRun.results.find(r => r.id === 'firmProfitResult')?.value).replace('$', ''))) < 10, 'P ≈ min ATC is Long-Run Equilibrium');
+assert(pcLongRun.shadedAreas.find(s => s.id === 'market-cs') !== undefined, 'Market graph shades Consumer Surplus');
+assert(pcLongRun.shadedAreas.find(s => s.id === 'market-ps') !== undefined, 'Market graph shades Producer Surplus');
 
 // 6. Batch 2 Verification: Monopoly (Single-Price & Price Discrimination)
 console.log('\n--- 6. Batch 2: Monopoly & Price Discrimination ---');
@@ -130,10 +142,14 @@ const monopolySingle = monopolyModel.calculate({ demandIntercept: 100, demandSlo
 assert(monopolySingle.results.find(r => r.id === 'monopolyQ')?.value === '36.0 units', 'Monopoly output Qm = 36.0 units');
 assert(monopolySingle.results.find(r => r.id === 'monopolyP')?.value === '$64.0', 'Monopoly price on Demand curve Pm = $64.0');
 assert(Number(String(monopolySingle.results.find(r => r.id === 'dwlResult')?.value).replace('$', '')) > 0, 'Single-price monopoly generates deadweight loss');
+assert(monopolySingle.results.find(r => r.id === 'psResult') !== undefined, 'Monopoly calculates Producer Surplus');
 
 const monopolyDiscrim = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 180, isPriceDiscrimination: true, regulationType: 'none' });
 assert(monopolyDiscrim.results.find(r => r.id === 'monopolyQ')?.value === '60.0 units', 'Price discrimination expands output to allocatively efficient 60.0 units');
 assert(monopolyDiscrim.results.find(r => r.id === 'dwlResult')?.value === '$0.0', 'Price discrimination eliminates all deadweight loss (DWL = 0)');
+
+const monopolyRegLoss = monopolyModel.calculate({ demandIntercept: 100, demandSlope: -1.0, mcSlope: 0.5, fixedCost: 2000, isPriceDiscrimination: false, regulationType: 'socially_optimal' });
+assert(monopolyRegLoss.shadedAreas.find(s => s.id === 'monopolyLoss') !== undefined, 'Monopoly under socially optimal regulation with loss shades economic loss box');
 
 // 7. Batch 2 Verification: Oligopoly & Game Theory Payoff Matrix
 console.log('\n--- 7. Batch 2: Oligopoly & Game Theory Payoff Matrix ---');
@@ -167,6 +183,9 @@ const monoCompLR = monopolisticCompModel.calculate({ marketPhase: 'long_run_tang
 assert(Number(String(monoCompLR.results.find(r => r.id === 'excessCapVal')?.value).split(' ')[0]) > 0, 'Monopolistic competition exhibits Excess Capacity in long run');
 const profitLR = Number(String(monoCompLR.results.find(r => r.id === 'profitVal')?.value).replace('$', '').replace('+', ''));
 assert(Math.abs(profitLR) < 5, 'Long-run tangency yields approximately zero economic profit');
+assert(monoCompLR.shadedAreas.find(s => s.id === 'cs') !== undefined, 'Monopolistic competition in long run displays Consumer Surplus');
+assert(monoCompLR.shadedAreas.find(s => s.id === 'dwl') !== undefined, 'Monopolistic competition in long run displays Deadweight Loss');
+assert(monoCompLR.results.find(r => r.id === 'psVal') !== undefined, 'Monopolistic competition calculates Producer Surplus');
 
 // 10. Batch 3 Verification: Factor Markets (Competitive & Monopsony)
 console.log('\n--- 10. Batch 3: Factor Markets (Labor Supply, MRP, Monopsony) ---');

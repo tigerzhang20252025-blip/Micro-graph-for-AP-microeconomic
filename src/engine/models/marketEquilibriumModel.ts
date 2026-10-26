@@ -365,9 +365,26 @@ export const marketEquilibriumModel: EconomicModel = {
       }
     }
 
+    // Demand and supply price evaluations at actual traded quantity
+    const pDemandAtActualQ = evaluateLinearPrice({ intercept: demandIntercept, slope: demandSlope }, actualQ);
+    const pSupplyAtActualQ = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
+
     // Welfare Calculations:
-    const cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
-    const ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
+    let cs = 0;
+    let ps = 0;
+    if (isBindingControl && params.priceControlMode === 'ceiling') {
+      // Consumers pay priceBuyer (Pc) for actualQ (Qs), valuing them up to pDemandAtActualQ (trapezoid)
+      cs = Math.max(0, 0.5 * ((demandIntercept - priceBuyer) + (pDemandAtActualQ - priceBuyer)) * actualQ);
+      ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
+    } else if (isBindingControl && params.priceControlMode === 'floor') {
+      // Producers receive priceSeller (Pf) for actualQ (Qd), costs along Supply up to pSupplyAtActualQ (trapezoid)
+      cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
+      ps = Math.max(0, 0.5 * ((priceSeller - supplyIntercept) + (priceSeller - pSupplyAtActualQ)) * actualQ);
+    } else {
+      cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
+      ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
+    }
+
     const taxRevenue = params.taxPerUnit > 0 ? params.taxPerUnit * actualQ : 0;
     const subsidyExpense = params.subsidyPerUnit > 0 ? params.subsidyPerUnit * actualQ : 0;
 
@@ -382,9 +399,7 @@ export const marketEquilibriumModel: EconomicModel = {
       dwl = 0.5 * params.subsidyPerUnit * deltaQ;
     } else if (isBindingControl) {
       const deltaQ = Math.max(0, qStar - actualQ);
-      const pDemandAtQ = evaluateLinearPrice({ intercept: demandIntercept, slope: demandSlope }, actualQ);
-      const pSupplyAtQ = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
-      dwl = 0.5 * Math.abs(pDemandAtQ - pSupplyAtQ) * deltaQ;
+      dwl = 0.5 * Math.abs(pDemandAtActualQ - pSupplyAtActualQ) * deltaQ;
     }
 
     const totalWelfare = cs + ps + taxRevenue - subsidyExpense;
@@ -632,14 +647,23 @@ export const marketEquilibriumModel: EconomicModel = {
 
     // Consumer Surplus (CS)
     if (actualQ > 0 && demandIntercept > priceBuyer) {
+      const csPoints = (isBindingControl && params.priceControlMode === 'ceiling')
+        ? [
+            { x: 0, y: demandIntercept },
+            { x: actualQ, y: pDemandAtActualQ },
+            { x: actualQ, y: priceBuyer },
+            { x: 0, y: priceBuyer }
+          ]
+        : [
+            { x: 0, y: demandIntercept },
+            { x: actualQ, y: priceBuyer },
+            { x: 0, y: priceBuyer }
+          ];
+
       shadedAreas.push({
         id: 'cs',
         label: { en: 'Consumer Surplus (CS)', zh: '消费者剩余（CS）' },
-        points: [
-          { x: 0, y: demandIntercept },
-          { x: actualQ, y: priceBuyer },
-          { x: 0, y: priceBuyer }
-        ],
+        points: csPoints,
         fill: '#3b82f6',
         opacity: 0.25,
         pattern: 'diagonal-right',
@@ -651,14 +675,23 @@ export const marketEquilibriumModel: EconomicModel = {
 
     // Producer Surplus (PS)
     if (actualQ > 0 && priceSeller > supplyIntercept) {
+      const psPoints = (isBindingControl && params.priceControlMode === 'floor')
+        ? [
+            { x: 0, y: supplyIntercept },
+            { x: 0, y: priceSeller },
+            { x: actualQ, y: priceSeller },
+            { x: actualQ, y: pSupplyAtActualQ }
+          ]
+        : [
+            { x: 0, y: supplyIntercept },
+            { x: actualQ, y: priceSeller },
+            { x: 0, y: priceSeller }
+          ];
+
       shadedAreas.push({
         id: 'ps',
         label: { en: 'Producer Surplus (PS)', zh: '生产者剩余（PS）' },
-        points: [
-          { x: 0, y: supplyIntercept },
-          { x: actualQ, y: priceSeller },
-          { x: 0, y: priceSeller }
-        ],
+        points: psPoints,
         fill: '#f59e0b',
         opacity: 0.25,
         pattern: 'diagonal-left',
@@ -715,7 +748,19 @@ export const marketEquilibriumModel: EconomicModel = {
         { x: qStar, y: pStar },
         { x: actualQ, y: priceSeller }
       ];
-      if (params.subsidyPerUnit > 0) {
+      if (isBindingControl && params.priceControlMode === 'ceiling') {
+        dwlPoints = [
+          { x: actualQ, y: pDemandAtActualQ },
+          { x: qStar, y: pStar },
+          { x: actualQ, y: priceBuyer }
+        ];
+      } else if (isBindingControl && params.priceControlMode === 'floor') {
+        dwlPoints = [
+          { x: actualQ, y: priceBuyer },
+          { x: qStar, y: pStar },
+          { x: actualQ, y: pSupplyAtActualQ }
+        ];
+      } else if (params.subsidyPerUnit > 0) {
         // Subsidy DWL triangle is between Q* and actualQ (to the right of equilibrium)
         dwlPoints = [
           { x: qStar, y: pStar },

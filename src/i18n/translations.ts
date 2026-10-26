@@ -54,6 +54,9 @@ export interface Translations {
   showEquilibriumPoints: string;
   showGridLines: string;
   curveLegend: string;
+  showCurveLayers: string;
+  showAllPresets: string;
+  showFewerPresets: string;
 
   // Modes
   modeLearning: string;
@@ -219,6 +222,9 @@ export const translations: Record<Language, Translations> = {
     showEquilibriumPoints: 'Show Equilibrium Drop Lines',
     showGridLines: 'Show Plot Grid',
     curveLegend: 'Curve Legend',
+    showCurveLayers: 'Individual Curve Visibility',
+    showAllPresets: 'Show all presets',
+    showFewerPresets: 'Show fewer',
 
     // Modes
     modeLearning: 'Prediction Learning Mode',
@@ -382,6 +388,9 @@ export const translations: Record<Language, Translations> = {
     showEquilibriumPoints: '显示均衡点垂直投影线',
     showGridLines: '显示坐标网格',
     curveLegend: '曲线图例',
+    showCurveLayers: '独立曲线图层开关',
+    showAllPresets: '展开全部预设',
+    showFewerPresets: '收起预设',
 
     // Modes
     modeLearning: '预测探究模式',

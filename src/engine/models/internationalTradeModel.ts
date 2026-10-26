@@ -80,6 +80,19 @@ export const internationalTradeModel: EconomicModel = {
   presets,
   controls: [
     {
+      type: 'select',
+      id: 'tradePolicy',
+      label: {
+        en: 'International Trade Policy',
+        zh: '国际贸易与关税政策'
+      },
+      options: [
+        { id: 'free_trade', label: { en: 'Free Trade (Zero Tariff)', zh: '自由贸易（零关税）' } },
+        { id: 'tariff', label: { en: 'Protective Tariff (Pw + Tariff)', zh: '保护性关税（Pw + 关税）' } },
+        { id: 'autarky', label: { en: 'Autarky (Closed Domestic Market)', zh: '封闭经济（禁止对外贸易）' } }
+      ]
+    },
+    {
       type: 'slider',
       id: 'tariffPerUnit',
       label: {
@@ -91,8 +104,8 @@ export const internationalTradeModel: EconomicModel = {
       step: 1,
       unit: '$',
       help: {
-        en: 'Raises the domestic price above the world price: P_domestic = Pw + Tariff.',
-        zh: '使国内售价高于世界价格：P_domestic = Pw + 关税。'
+        en: 'Active when Tariff policy is selected.',
+        zh: '在选择征收关税政策时生效。'
       }
     },
     {
@@ -128,7 +141,12 @@ export const internationalTradeModel: EconomicModel = {
     const pAutarky = a - b * qAutarky;   // 50
 
     const pw = Math.min(pAutarky, Math.max(10, params.worldPrice));
-    const effectiveTariff = params.tradePolicy === 'autarky' ? (pAutarky - pw) : Math.min(pAutarky - pw, Math.max(0, params.tariffPerUnit));
+    const effectiveTariff =
+      params.tradePolicy === 'autarky'
+        ? (pAutarky - pw)
+        : params.tradePolicy === 'free_trade'
+        ? 0
+        : Math.min(pAutarky - pw, Math.max(0, params.tariffPerUnit));
     const domesticPrice = pw + effectiveTariff;
 
     // Domestic quantities at domesticPrice:

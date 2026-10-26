@@ -185,6 +185,7 @@ export const GraphWorkspace: React.FC = () => {
           <GraphControls
             model={model}
             params={activeParams}
+            curves={graphOutput.curves}
             onParamChange={handleParamChange}
             onReset={handleReset}
             onApplyPreset={handleApplyPreset}

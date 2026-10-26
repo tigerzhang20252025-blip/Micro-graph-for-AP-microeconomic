@@ -39,6 +39,7 @@ export interface ShadedAreaSpec {
   pattern?: 'dots' | 'diagonal-left' | 'diagonal-right' | 'cross' | 'solid';
   value?: number;
   valuePrefix?: string;
+  valueSuffix?: string;
   visible: boolean;
 }
 
@@ -91,6 +92,7 @@ export interface SelectControlSpec {
   type: 'select';
   id: string;
   label: BilingualText;
+  help?: BilingualText;
   options: {
     id: string;
     label: BilingualText;

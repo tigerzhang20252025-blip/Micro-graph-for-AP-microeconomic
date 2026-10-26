@@ -10,7 +10,7 @@ interface GraphContainerProps {
 
 export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) => {
   const { tr } = useLanguage();
-  const { layerVisibility } = useAppState();
+  const { layerVisibility, hiddenCurveIds } = useAppState();
 
   // SVG dimensions & padding (Standard 4:3 high-res responsive viewBox)
   const svgWidth = 640;
@@ -21,6 +21,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   const plotHeight = svgHeight - padding.top - padding.bottom;
 
   const { axes, curves, points, shadedAreas } = data;
+  const visibleCurves = curves.filter((c) => c.visible && !hiddenCurveIds?.includes(c.id));
 
   // Coordinate transforms: Economic Space -> SVG Space
   const scaleX = (x: number): number => {
@@ -248,8 +249,8 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
     height: number;
   }
 
-  const rawCurveLabels: CurveLabelLayout[] = curves
-    .filter((c) => c.visible && c.points.length > 0)
+  const rawCurveLabels: CurveLabelLayout[] = visibleCurves
+    .filter((c) => c.points.length > 0)
     .map((curve) => {
       const lastPt = curve.points[curve.points.length - 1];
       const rawX = scaleX(lastPt.x);
@@ -512,8 +513,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
           {/* Economic Curves */}
           <g className="economic-curves">
-            {curves.map((curve) => {
-              if (!curve.visible) return null;
+            {visibleCurves.map((curve) => {
               const pathD = pointsToSvgPath(curve.points);
 
               return (
@@ -729,7 +729,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
       {/* Accessible Curve & Area Legend */}
       <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
         <span className="font-semibold text-slate-500 uppercase tracking-wider text-[11px]">Legend:</span>
-        {curves.map((curve) => (
+        {visibleCurves.map((curve) => (
           <div key={`legend-curve-${curve.id}`} className="flex items-center gap-1.5">
             <span
               className="w-4 h-0.5 inline-block"
@@ -750,7 +750,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             ></span>
             <span className="text-slate-700 font-medium">
               {tr(area.label)}
-              {area.value !== undefined ? ` (${area.valuePrefix || ''}${area.value})` : ''}
+              {area.value !== undefined ? ` (${area.valuePrefix || ''}${area.value}${area.valueSuffix || ''})` : ''}
             </span>
           </div>
         ))}

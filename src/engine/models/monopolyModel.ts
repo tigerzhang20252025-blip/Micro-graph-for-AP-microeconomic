@@ -364,6 +364,9 @@ export const monopolyModel: EconomicModel = {
       }
     ];
 
+    // Producer Surplus calculation
+    const producerSurplus = Math.max(0, profit + params.fixedCost);
+
     // Shaded Welfare Areas
     const shadedAreas: ShadedAreaSpec[] = [];
 
@@ -386,7 +389,7 @@ export const monopolyModel: EconomicModel = {
       });
     }
 
-    // Monopoly Economic Profit Box: from atcAtQ to actualP between 0 and actualQ
+    // Monopoly Economic Profit or Loss Box
     if (profit > 1 && !params.isPriceDiscrimination) {
       shadedAreas.push({
         id: 'monopolyProfit',
@@ -404,11 +407,28 @@ export const monopolyModel: EconomicModel = {
         valuePrefix: '+$',
         visible: true
       });
+    } else if (profit < -1 && !params.isPriceDiscrimination) {
+      shadedAreas.push({
+        id: 'monopolyLoss',
+        label: { en: `Economic Loss (-$${Math.abs(profit).toFixed(1)})`, zh: `经济亏损 (-$${Math.abs(profit).toFixed(1)})` },
+        points: [
+          { x: 0, y: actualP },
+          { x: actualQ, y: actualP },
+          { x: actualQ, y: atcAtQ },
+          { x: 0, y: atcAtQ }
+        ],
+        fill: '#ef4444',
+        opacity: 0.28,
+        pattern: 'cross',
+        value: Number(Math.abs(profit).toFixed(1)),
+        valuePrefix: '-$',
+        visible: true
+      });
     } else if (params.isPriceDiscrimination) {
       // Entire area captured as profit
       shadedAreas.push({
         id: 'discrimProfit',
-        label: { en: `Extracted Total Profit via Price Discrimination: +$${profit.toFixed(1)}`, zh: `通过完全价格歧视掠夺的总利润：+$${profit.toFixed(1)}` },
+        label: { en: `Extracted Total Surplus via Price Discrimination: +$${producerSurplus.toFixed(1)} (Profit: +$${profit.toFixed(1)})`, zh: `通过一级价格歧视掠夺的总剩余：+$${producerSurplus.toFixed(1)}（净利润：+$${profit.toFixed(1)}）` },
         points: [
           { x: 0, y: mcIntercept },
           { x: actualQ, y: actualP },
@@ -417,7 +437,7 @@ export const monopolyModel: EconomicModel = {
         fill: '#10b981',
         opacity: 0.3,
         pattern: 'dots',
-        value: Number(profit.toFixed(1)),
+        value: Number(producerSurplus.toFixed(1)),
         valuePrefix: '+$',
         visible: true
       });
@@ -518,10 +538,17 @@ export const monopolyModel: EconomicModel = {
       },
       {
         id: 'profitResult',
-        label: { en: 'Economic Profit', zh: '垄断超额经济利润' },
-        value: `+$${profit.toFixed(1)}`,
-        color: '#10b981',
+        label: { en: 'Economic Profit / (Loss)', zh: '超额经济利润 / （亏损）' },
+        value: profit >= 0 ? `+$${profit.toFixed(1)}` : `-$${Math.abs(profit).toFixed(1)}`,
+        color: profit > 1 ? '#10b981' : profit < -1 ? '#dc2626' : '#059669',
         formula: '(P - ATC) × Q'
+      },
+      {
+        id: 'psResult',
+        label: { en: 'Producer Surplus (PS)', zh: '生产者剩余（PS）' },
+        value: `$${producerSurplus.toFixed(1)}`,
+        color: '#f59e0b',
+        formula: 'TR - TVC = Profit + FC'
       },
       {
         id: 'dwlResult',

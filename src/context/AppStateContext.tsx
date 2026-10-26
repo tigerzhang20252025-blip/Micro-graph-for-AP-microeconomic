@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { AP_TOPICS } from '../data/topicRegistry';
+import { getModelById } from '../engine/models';
 
 export type AppView = 'library' | 'graph' | 'learning' | 'practice' | 'reference';
 export type AppMode = 'learning' | 'practice' | 'reference';
@@ -31,11 +32,102 @@ interface AppStateContextType {
     showGrid: boolean;
   };
   toggleLayer: (layer: 'showSurplus' | 'showDropLines' | 'showGrid') => void;
+  hiddenCurveIds: string[];
+  toggleCurveVisibility: (curveId: string) => void;
 
   // Navigation helpers
   navigateToTopic: (topicId: string) => void;
   navigateToGraph: (modelId: string, topicId?: string) => void;
 }
+
+export const TOPIC_INITIAL_PARAMS: Record<string, Record<string, any>> = {
+  'gov-intervention-taxes-deadweight': {
+    demandShift: 0,
+    supplyShift: 0,
+    taxPerUnit: 14,
+    subsidyPerUnit: 0,
+    priceControlMode: 'none',
+    controlledPrice: 40,
+    showBaselineComparison: false
+  },
+  'price-controls-ceilings-floors': {
+    demandShift: 0,
+    supplyShift: 0,
+    taxPerUnit: 0,
+    subsidyPerUnit: 0,
+    priceControlMode: 'ceiling',
+    controlledPrice: 35,
+    showBaselineComparison: false
+  },
+  'market-equilibrium-welfare': {
+    demandShift: 0,
+    supplyShift: 0,
+    taxPerUnit: 0,
+    subsidyPerUnit: 0,
+    priceControlMode: 'none',
+    controlledPrice: 40,
+    showBaselineComparison: false
+  },
+  'shutdown-rule': {
+    fixedCost: 120,
+    perUnitTax: 0,
+    chosenQuantity: 18,
+    showMC: true,
+    showATC: true,
+    showAVC: true,
+    showAFC: true
+  },
+  'cost-curves-short-run': {
+    fixedCost: 120,
+    perUnitTax: 0,
+    chosenQuantity: 24,
+    showMC: true,
+    showATC: true,
+    showAVC: true,
+    showAFC: true
+  },
+  'monopoly-single-price': {
+    demandIntercept: 100,
+    fixedCost: 180,
+    isPriceDiscrimination: false,
+    regulationType: 'none'
+  },
+  'monopoly-price-discrimination': {
+    demandIntercept: 100,
+    fixedCost: 180,
+    isPriceDiscrimination: true,
+    regulationType: 'none'
+  },
+  'factor-market-competitive': {
+    marketStructure: 'competitive_firm',
+    laborProductPrice: 5,
+    minWageRate: 0,
+    laborSupplyBase: 35,
+    laborSupplySlope: 0
+  },
+  'monopsony-factor-market': {
+    marketStructure: 'monopsony',
+    laborProductPrice: 5,
+    minWageRate: 0,
+    laborSupplyBase: 10,
+    laborSupplySlope: 1.5
+  },
+  'negative-externalities': {
+    externalityType: 'negative_production',
+    externalityMagnitude: 24,
+    correctivePolicyActive: false
+  },
+  'positive-externalities': {
+    externalityType: 'positive_consumption',
+    externalityMagnitude: 24,
+    correctivePolicyActive: false
+  },
+  'international-trade-tariffs': {
+    tradePolicy: 'tariff',
+    tariffPerUnit: 12,
+    worldPrice: 30
+  }
+};
 
 const AppStateContext = createContext<AppStateContextType | undefined>(undefined);
 
@@ -54,11 +146,19 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     showGrid: true,
   });
 
+  const [hiddenCurveIds, setHiddenCurveIds] = useState<string[]>([]);
+
   const toggleLayer = (layer: 'showSurplus' | 'showDropLines' | 'showGrid') => {
     setLayerVisibility(prev => ({
       ...prev,
       [layer]: !prev[layer]
     }));
+  };
+
+  const toggleCurveVisibility = (curveId: string) => {
+    setHiddenCurveIds(prev =>
+      prev.includes(curveId) ? prev.filter(id => id !== curveId) : [...prev, curveId]
+    );
   };
 
   const updateModelParam = (modelId: string, paramKey: string, value: any) => {
@@ -89,7 +189,16 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     setSelectedTopicId(topicId);
     const topic = AP_TOPICS.find(t => t.id === topicId);
     if (topic?.graphModelId) {
-      setSelectedModelId(topic.graphModelId);
+      const model = getModelById(topic.graphModelId);
+      const targetModelKey = model ? model.id : topic.graphModelId;
+      setSelectedModelId(targetModelKey);
+      // Auto-apply topic-specific preset params if defined
+      if (TOPIC_INITIAL_PARAMS[topicId]) {
+        setModelParamsState(prev => ({
+          ...prev,
+          [targetModelKey]: { ...TOPIC_INITIAL_PARAMS[topicId] }
+        }));
+      }
       setCurrentView('graph');
     } else {
       setCurrentView('library');
@@ -97,13 +206,17 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const navigateToGraph = (modelId: string, topicId?: string) => {
-    setSelectedModelId(modelId);
-    if (topicId) {
-      setSelectedTopicId(topicId);
-    } else {
-      const matchingTopic = AP_TOPICS.find((t) => t.graphModelId === modelId || t.id === modelId);
-      if (matchingTopic) {
-        setSelectedTopicId(matchingTopic.id);
+    const model = getModelById(modelId);
+    const targetModelKey = model ? model.id : modelId;
+    setSelectedModelId(targetModelKey);
+    const effectiveTopicId = topicId || AP_TOPICS.find((t) => t.graphModelId === modelId || t.id === modelId)?.id;
+    if (effectiveTopicId) {
+      setSelectedTopicId(effectiveTopicId);
+      if (TOPIC_INITIAL_PARAMS[effectiveTopicId]) {
+        setModelParamsState(prev => ({
+          ...prev,
+          [targetModelKey]: { ...TOPIC_INITIAL_PARAMS[effectiveTopicId] }
+        }));
       }
     }
     setCurrentView('graph');
@@ -126,6 +239,8 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     resetModelParams,
     layerVisibility,
     toggleLayer,
+    hiddenCurveIds,
+    toggleCurveVisibility,
     navigateToTopic,
     navigateToGraph
   };

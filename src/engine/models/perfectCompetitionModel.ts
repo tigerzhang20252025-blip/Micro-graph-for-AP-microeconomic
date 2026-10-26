@@ -283,6 +283,49 @@ export const perfectCompetitionModel: EconomicModel = {
       }
     ];
 
+    // Market Welfare Shading (CS, PS)
+    const marketCS = Math.max(0, 0.5 * (marketDIntercept - marketP) * marketQ);
+    const marketPS = Math.max(0, 0.5 * (marketP - marketSIntercept) * marketQ);
+    const marketShadedAreas: ShadedAreaSpec[] = [];
+
+    if (marketQ > 0 && marketDIntercept > marketP) {
+      marketShadedAreas.push({
+        id: 'market-cs',
+        label: { en: `Market Consumer Surplus ($${(marketCS / 1000).toFixed(1)}k)`, zh: `市场消费者剩余（$${(marketCS / 1000).toFixed(1)}k）` },
+        points: [
+          { x: 0, y: marketDIntercept },
+          { x: marketQ, y: marketP },
+          { x: 0, y: marketP }
+        ],
+        fill: '#3b82f6',
+        opacity: 0.22,
+        pattern: 'diagonal-right',
+        value: Number((marketCS / 1000).toFixed(1)),
+        valuePrefix: '$',
+        valueSuffix: 'k',
+        visible: true
+      });
+    }
+
+    if (marketQ > 0 && marketP > marketSIntercept) {
+      marketShadedAreas.push({
+        id: 'market-ps',
+        label: { en: `Market Producer Surplus ($${(marketPS / 1000).toFixed(1)}k)`, zh: `市场生产者剩余（$${(marketPS / 1000).toFixed(1)}k）` },
+        points: [
+          { x: 0, y: marketSIntercept },
+          { x: marketQ, y: marketP },
+          { x: 0, y: marketP }
+        ],
+        fill: '#f59e0b',
+        opacity: 0.25,
+        pattern: 'diagonal-left',
+        value: Number((marketPS / 1000).toFixed(1)),
+        valuePrefix: '$',
+        valueSuffix: 'k',
+        visible: true
+      });
+    }
+
     // Individual Firm Graph (Secondary / Right)
     const firmMaxQ = 45;
     const firmMaxP = 85;
@@ -555,7 +598,7 @@ export const perfectCompetitionModel: EconomicModel = {
       },
       curves: marketCurves,
       points: marketPoints,
-      shadedAreas: [],
+      shadedAreas: marketShadedAreas,
       results,
       secondaryGraph,
       customTable,
