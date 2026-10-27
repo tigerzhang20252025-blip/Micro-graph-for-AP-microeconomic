@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vite build --ssr src/test/foundation.test.ts --outDir dist-test && node dist-test/foundation.test.js && rm -rf dist-test"
+    "test": "vite build --ssr src/test/foundation.test.ts --outDir dist-test && node dist-test/foundation.test.js && rm -rf dist-test",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name microeconomics-lab --branch main"
   },
   "dependencies": {
     "clsx": "^2.1.1",
