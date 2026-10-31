@@ -278,7 +278,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
               {curves.map((curve) => {
-                const isVisible = !hiddenCurveIds.includes(curve.id);
+                const isVisible = !(hiddenCurveIds[model.id] || []).includes(curve.id);
                 return (
                   <label
                     key={curve.id}
@@ -291,7 +291,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     <input
                       type="checkbox"
                       checked={isVisible}
-                      onChange={() => toggleCurveVisibility(curve.id)}
+                      onChange={() => toggleCurveVisibility(model.id, curve.id)}
                       className="rounded text-blue-600 focus:ring-blue-500"
                     />
                     <span

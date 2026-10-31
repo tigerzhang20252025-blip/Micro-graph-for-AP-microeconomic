@@ -96,12 +96,24 @@ const floorEq = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 
 const floorPS = floorEq.shadedAreas.find(s => s.id === 'ps');
 assert(floorPS !== undefined && floorPS.points.length === 4, 'Binding price floor yields 4-point trapezoid Producer Surplus');
 
+const taxCeiling = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 20, subsidyPerUnit: 0, priceControlMode: 'ceiling', controlledPrice: 40, showBaselineComparison: false });
+const taxCeilingPb = taxCeiling.points.find(p => p.id === 'buyerPricePoint');
+const taxCeilingPs = taxCeiling.points.find(p => p.id === 'sellerPricePoint');
+assert(taxCeilingPb?.y === 40 && taxCeilingPs?.y === 20, 'Tax plus binding price ceiling preserves the $20 buyer-seller wedge');
+const subsidyFloor = marketEquilibriumModel.calculate({ demandShift: 0, supplyShift: 0, taxPerUnit: 0, subsidyPerUnit: 20, priceControlMode: 'floor', controlledPrice: 60, showBaselineComparison: false });
+const subsidyFloorPb = subsidyFloor.points.find(p => p.id === 'buyerPriceSub');
+const subsidyFloorPs = subsidyFloor.points.find(p => p.id === 'sellerPriceSub');
+assert(subsidyFloorPb?.y === 60 && subsidyFloorPs?.y === 80, 'Subsidy plus binding price floor preserves the $20 buyer-seller wedge');
+assert(subsidyFloor.explanation.en.includes('binding price control determines actual trade'), 'Combined subsidy and price-control explanation does not falsely claim overproduction');
+
 const elasticityMid = elasticityModel.calculate({ priceLevel: 50, demandIntercept: 100, demandSlope: -1.0, crossPricePercentage: 10, crossGoodType: 'substitute', incomePercentage: 10, incomeGoodType: 'normal_necessity' });
 assert(elasticityMid.results.find(r => r.id === 'pedValue')?.value === '1.00', 'Demand Midpoint |PED| = 1.00');
 assert(elasticityMid.secondaryGraph !== undefined, 'Elasticity outputs secondary Total Revenue parabola');
 
 const compAdv = comparativeAdvantageModel.calculate({ countryAMaxCars: 60, countryAMaxWheat: 120, countryBMaxCars: 40, countryBMaxWheat: 40, termsOfTradeCarToWheat: 1.5 });
 assert(compAdv.results.find(r => r.id === 'oppCostCarB')?.value === '1.00 Wheat', 'Country B Car opportunity cost = 1.00 Wheat');
+const equalCompAdv = comparativeAdvantageModel.calculate({ countryAMaxCars: 50, countryAMaxWheat: 100, countryBMaxCars: 25, countryBMaxWheat: 50, termsOfTradeCarToWheat: 2 });
+assert(String((equalCompAdv.customTable?.rows[0].values[4] as any).en).includes('None'), 'Equal opportunity costs report no comparative advantage');
 
 const ppcSample = ppcModel.calculate({ costShape: 'bowed', techConsumerGoods: 100, techCapitalGoods: 100, productionX: 60, showGrowthShift: false });
 assert(ppcSample.curves.length > 0, 'PPC generates curve');
@@ -195,6 +207,10 @@ assert(monopsonyBase.shadedAreas.find(s => s.id === 'mono-dwl') !== undefined, '
 
 const compFactor = factorMarketModel.calculate({ marketStructure: 'competitive_firm', laborProductPrice: 5, minWageRate: 0 });
 assert(compFactor.results.find(r => r.id === 'dwlVal')?.value === '$0.00', 'Competitive factor market has zero deadweight loss');
+const monopsonyNonbindingFloor = factorMarketModel.calculate({ marketStructure: 'monopsony', laborProductPrice: 5, minWageRate: 10 });
+assert(monopsonyNonbindingFloor.results.find(r => r.id === 'dwlVal')?.value !== '$0.00', 'Nonbinding monopsony minimum wage does not erase existing DWL');
+const monopsonyHighFloor = factorMarketModel.calculate({ marketStructure: 'monopsony', laborProductPrice: 5, minWageRate: 55 });
+assert(monopsonyHighFloor.results.find(r => r.id === 'dwlVal')?.value !== '$0.00', 'Excessive monopsony minimum wage reports DWL');
 
 // 11. Batch 3 Verification: Externalities (Negative & Positive)
 console.log('\n--- 11. Batch 3: Market Failure (Externalities & Pigouvian Policy) ---');
@@ -223,6 +239,8 @@ console.log('\n--- 13. Batch 3: Marginal Analysis & Utility Maximization ---');
 const utilityModelResult = utilityMaximizationModel.calculate({ income: 40, priceX: 4, priceY: 8 });
 assert(utilityModelResult.results.find(r => r.id === 'optBundle') !== undefined, 'Utility model computes optimal consumption bundle');
 assert(utilityModelResult.customTable !== undefined, 'Utility model outputs AP discrete equi-marginal schedule');
+const utilitySatiation = utilityMaximizationModel.calculate({ income: 80, priceX: 10, priceY: 2 });
+assert(utilitySatiation.results.find(r => r.id === 'budgetSpent')?.value === '$74 / $80', 'Utility model does not buy zero-MU units merely to exhaust budget');
 
 // 14. Batch 3 Verification: Optional Honors Extensions
 console.log('\n--- 14. Optional Extensions (Indifference Curves & Cournot Duopoly) ---');
@@ -322,6 +340,9 @@ console.log('\n--- 20. Batch 4: Public Goods (Vertical Summation MSB = MB1 + MB2
 const publicGood = publicGoodsModel.calculate({ mb1Intercept: 35, mb2Intercept: 45, marginalCost: 40 });
 const optQ = publicGood.results.find(r => r.label.en.includes('Socially Optimal Quantity'));
 assert(optQ !== undefined && String(optQ.value).length > 0, `Optimal public good quantity calculated: ${optQ?.value}`);
+assert(optQ?.value === '6.67 units', 'Public-good optimum satisfies MSB = MC at Q = 6.67');
+const msbAtOpt = Number(String(publicGood.results.find(r => r.id === 'res-total-msb')?.value).replace('$', ''));
+assert(Math.abs(msbAtOpt - 40) < 0.05, 'Public-good MSB at optimum equals marginal cost');
 assert(publicGood.curves.some(c => c.shortLabel === 'MSB'), 'Public goods outputs vertical summation MSB curve');
 assert(publicGood.curves.some(c => c.shortLabel === 'MC'), 'Public goods outputs constant/upward MC curve');
 

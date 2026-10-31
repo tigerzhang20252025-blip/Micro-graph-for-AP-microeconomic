@@ -152,25 +152,28 @@ export const factorMarketModel: EconomicModel = {
 
     let lActual = isMonopsony ? lMonoRaw : lComp;
     let wActual = isMonopsony ? wMonoRaw : wComp;
+    const bindingWage = isMonopsony ? minWage > wMonoRaw : minWage > wComp;
 
-    if (isMonopsony && minWage > 0) {
-      if (minWage > wMonoRaw) {
-        const lFlatCapacity = b > 0 ? (minWage - a) / b : lComp;
-        const lMrpDemand = (mrpIntercept - minWage) / mrpSlope;
+    const lFlatCapacity = isMonopsony && b > 0 ? Math.max(0, (minWage - a) / b) : lComp;
+    const lMrpDemandAtMinimum = Math.max(0, (mrpIntercept - minWage) / mrpSlope);
 
-        if (minWage <= wComp) {
-          lActual = Math.min(lFlatCapacity, lMrpDemand);
-          wActual = minWage;
-        } else {
-          lActual = Math.max(0, lMrpDemand);
-          wActual = minWage;
-        }
+    if (isMonopsony && bindingWage) {
+      if (minWage <= wComp) {
+        lActual = Math.min(lFlatCapacity, lMrpDemandAtMinimum);
+      } else {
+        lActual = lMrpDemandAtMinimum;
       }
+      wActual = minWage;
+    } else if (!isMonopsony && bindingWage) {
+      lActual = lMrpDemandAtMinimum;
+      wActual = minWage;
     }
 
-    const dwl = isMonopsony
-      ? 0.5 * (mrpAtMono - wMonoRaw) * (lComp - lMonoRaw)
-      : 0;
+    const marginalSurplusAtActualEmployment = Math.max(
+      0,
+      (mrpIntercept - mrpSlope * lActual) - (a + b * lActual)
+    );
+    const dwl = 0.5 * marginalSurplusAtActualEmployment * Math.max(0, lComp - lActual);
 
     const xMax = 25;
     const yMax = 130;
@@ -217,7 +220,7 @@ export const factorMarketModel: EconomicModel = {
     ];
 
     if (isMonopsony) {
-      const mfcPoints = generateLinearPoints(
+      let mfcPoints = generateLinearPoints(
         { intercept: mfcIntercept, slope: mfcSlope },
         0,
         Math.min(xMax, (yMax - mfcIntercept) / (mfcSlope || 1)),
@@ -225,6 +228,23 @@ export const factorMarketModel: EconomicModel = {
         0,
         yMax
       );
+
+      if (bindingWage) {
+        const flatEnd = Math.min(xMax, lFlatCapacity);
+        const mfcAfterFloor = mfcIntercept + mfcSlope * flatEnd;
+        mfcPoints = [{ x: 0, y: minWage }, { x: flatEnd, y: minWage }];
+        if (flatEnd < xMax && mfcAfterFloor <= yMax) {
+          mfcPoints.push({ x: flatEnd, y: mfcAfterFloor });
+          mfcPoints.push(...generateLinearPoints(
+            { intercept: mfcIntercept, slope: mfcSlope },
+            flatEnd,
+            Math.min(xMax, (yMax - mfcIntercept) / (mfcSlope || 1)),
+            40,
+            0,
+            yMax
+          ).slice(1));
+        }
+      }
 
       curves.push({
         id: 'mfc',
@@ -235,7 +255,9 @@ export const factorMarketModel: EconomicModel = {
         strokeWidth: 2.5,
         strokeDasharray: '4,2',
         visible: true,
-        equation: `MFC = ${mfcIntercept.toFixed(1)} + ${mfcSlope.toFixed(1)}L`
+        equation: bindingWage
+          ? `MFC = $${minWage.toFixed(1)} up to L=${lFlatCapacity.toFixed(1)}, then rises`
+          : `MFC = ${mfcIntercept.toFixed(1)} + ${mfcSlope.toFixed(1)}L`
       });
     }
 
@@ -301,14 +323,14 @@ export const factorMarketModel: EconomicModel = {
 
     const shadedAreas: ShadedAreaSpec[] = [];
 
-    if (isMonopsony && minWage === 0) {
+    if (dwl > 0.01) {
       shadedAreas.push({
         id: 'mono-dwl',
         label: { en: `Monopsony Deadweight Loss ($${dwl.toFixed(1)})`, zh: `买方垄断死重损失 ($${dwl.toFixed(1)})` },
         points: [
-          { x: lMonoRaw, y: mrpAtMono },
+          { x: lActual, y: mrpIntercept - mrpSlope * lActual },
           { x: lComp, y: wComp },
-          { x: lMonoRaw, y: wMonoRaw }
+          { x: lActual, y: a + b * lActual }
         ],
         fill: '#ef4444',
         opacity: 0.25,
@@ -346,20 +368,28 @@ export const factorMarketModel: EconomicModel = {
       {
         id: 'dwlVal',
         label: { en: 'Market Deadweight Loss', zh: '市场无谓损失（DWL）' },
-        value: isMonopsony && minWage === 0 ? `$${dwl.toFixed(2)}` : '$0.00',
-        color: isMonopsony && minWage === 0 ? '#dc2626' : '#059669'
+        value: `$${dwl.toFixed(2)}`,
+        color: dwl > 0.01 ? '#dc2626' : '#059669'
       }
     ];
 
     const explanation = {
       en: isMonopsony
-        ? minWage > 0 && minWage <= wComp
+        ? minWage > 0 && !bindingWage
+          ? `A minimum wage of $${minWage.toFixed(2)} is below the monopsony wage of $${wMonoRaw.toFixed(2)}, so it is nonbinding: employment and wages remain at ${lActual.toFixed(1)} workers and $${wActual.toFixed(2)}.`
+          : bindingWage && minWage <= wComp
           ? `Remarkable Monopsony Phenomenon: Setting a minimum wage of $${minWage.toFixed(2)} actually INCREASES employment from ${lMonoRaw.toFixed(1)} to ${lActual.toFixed(1)} workers while simultaneously raising wages from $${wMonoRaw.toFixed(2)} to $${wActual.toFixed(2)}! Because the minimum wage eliminates the monopsonist's incentive to restrict hiring, MFC becomes horizontal at $${minWage.toFixed(2)}.`
+          : bindingWage
+          ? `A minimum wage of $${minWage.toFixed(2)} exceeds the competitive wage of $${wComp.toFixed(2)}. The firm hires only ${lActual.toFixed(1)} workers where MRP equals the wage floor, creating unemployment and $${dwl.toFixed(1)} in deadweight loss.`
           : `Because the monopsonist is the sole buyer of labor, hiring an additional worker forces it to raise wages for all previous workers. Hence, MFC lies above Labor Supply. The monopsonist hires where MRP = MFC (${lMonoRaw.toFixed(1)} workers), but pays only $${wMonoRaw.toFixed(2)} from the Labor Supply curve. This creates wage exploitation ($${(mrpAtMono - wMonoRaw).toFixed(2)} markdown below MRP) and $${dwl.toFixed(1)} in deadweight loss.`
         : `In a competitive factor market, the individual firm is a wage-taker facing a perfectly horizontal labor supply curve (S_L = MFC = W* = $${wComp.toFixed(2)}). The firm maximizes profit by hiring workers up to the point where MRP_L = W* (${lComp.toFixed(1)} workers). Factor resources are allocatively efficient.`,
       zh: isMonopsony
-        ? minWage > 0 && minWage <= wComp
+        ? minWage > 0 && !bindingWage
+          ? `$${minWage.toFixed(2)} 的最低工资低于买方垄断工资 $${wMonoRaw.toFixed(2)}，因而不具有约束力：就业与工资仍为 ${lActual.toFixed(1)} 人和 $${wActual.toFixed(2)}。`
+          : bindingWage && minWage <= wComp
           ? `罕见的买方垄断经济奇迹：设立 $${minWage.toFixed(2)} 的法定最低工资，竟然将雇佣量从 ${lMonoRaw.toFixed(1)} 人扩大到 ${lActual.toFixed(1)} 人，同时将工人工资从 $${wMonoRaw.toFixed(2)} 提高到 $${wActual.toFixed(2)}！这是因为最低工资消除了垄断雇主压低产量的动力，使 MFC 在受控范围内变平。`
+          : bindingWage
+          ? `$${minWage.toFixed(2)} 的最低工资高于竞争工资 $${wComp.toFixed(2)}。企业仅在 MRP 等于最低工资处雇佣 ${lActual.toFixed(1)} 人，造成失业与 $${dwl.toFixed(1)} 的无谓损失。`
           : `由于买方垄断是当地唯一的劳动力买家，增聘一名工人必须给所有已有员工同等加薪，导致 MFC 显著陡峭于劳动力供给曲线。企业在 MRP = MFC 处雇佣 ${lMonoRaw.toFixed(1)} 人，却顺着劳动供给线仅支付 $${wMonoRaw.toFixed(2)} 的低工资，产生 $${(mrpAtMono - wMonoRaw).toFixed(2)} 的“工资剥削（Wage Markdown）”与 $${dwl.toFixed(1)} 的社会死重损失。`
         : `在完全竞争要素市场中，个别企业是工资接受者，面对完全水平的劳动力供给曲线（S_L = MFC = W* = $${wComp.toFixed(2)}）。企业遵循边际分析法雇佣员工直至 MRP_L = W*（${lComp.toFixed(1)} 人），要素市场达到社会配置最优。`
     };

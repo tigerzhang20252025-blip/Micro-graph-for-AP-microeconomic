@@ -152,8 +152,11 @@ export const comparativeAdvantageModel: EconomicModel = {
     const oppCostWheatB = cB / wB;
 
     // Determine comparative advantages:
+    const aAdvCar = oppCostCarA < oppCostCarB;
     const bAdvCar = oppCostCarB < oppCostCarA;
     const aAdvWheat = oppCostWheatA < oppCostWheatB;
+    const bAdvWheat = oppCostWheatB < oppCostWheatA;
+    const hasComparativeAdvantage = aAdvCar || aAdvWheat || bAdvCar || bAdvWheat;
 
     const lowerBoundTrade = Math.min(oppCostCarA, oppCostCarB);
     const upperBoundTrade = Math.max(oppCostCarA, oppCostCarB);
@@ -165,7 +168,7 @@ export const comparativeAdvantageModel: EconomicModel = {
     // If Country A specializes in Wheat (wA), exporting Wheat for Cars at rate 1 Car = tot Wheat
     // Max Cars Country A could consume via trade = wA / tot
     const maxCarsViaTradeA = aAdvWheat ? (wA / tot) : cA;
-    const maxWheatViaTradeA = aAdvWheat ? wA : (cA * tot);
+    const maxWheatViaTradeA = aAdvCar ? (cA * tot) : wA;
 
     const countryAPpcPoints = [
       { x: 0, y: wA },
@@ -208,12 +211,12 @@ export const comparativeAdvantageModel: EconomicModel = {
       {
         id: 'specA',
         label: {
-          en: aAdvWheat ? 'Country A Specialization: 100% Wheat' : 'Country A Specialization: 100% Cars',
-          zh: aAdvWheat ? '国家 A 完全分工点：100% 生产小麦' : '国家 A 完全分工点：100% 生产汽车'
+          en: aAdvWheat ? 'Country A Specialization: 100% Wheat' : aAdvCar ? 'Country A Specialization: 100% Cars' : 'Country A: No Comparative Advantage',
+          zh: aAdvWheat ? '国家 A 完全分工点：100% 生产小麦' : aAdvCar ? '国家 A 完全分工点：100% 生产汽车' : '国家 A：无比较优势'
         },
-        shortLabel: aAdvWheat ? 'Spec(W)' : 'Spec(C)',
-        x: aAdvWheat ? 0 : cA,
-        y: aAdvWheat ? wA : 0,
+        shortLabel: aAdvWheat ? 'Spec(W)' : aAdvCar ? 'Spec(C)' : 'No CA',
+        x: aAdvWheat ? 0 : aAdvCar ? cA : 0,
+        y: aAdvWheat ? wA : aAdvCar ? 0 : 0,
         color: '#059669',
         showDropLines: true,
         xLabel: aAdvWheat ? '0 Cars' : `${cA} Cars`,
@@ -222,15 +225,13 @@ export const comparativeAdvantageModel: EconomicModel = {
     ];
 
     const shadedAreasA: ShadedAreaSpec[] = [];
-    if (isMutuallyBeneficial && aAdvWheat) {
+    if (isMutuallyBeneficial && (aAdvWheat || aAdvCar)) {
       shadedAreasA.push({
         id: 'gainsFromTradeA',
         label: { en: 'Country A: Gains from Trade (Expanded Consumption)', zh: '国家 A：贸易利得（超越 PPC 的消费扩张）' },
-        points: [
-          { x: 0, y: wA },
-          { x: maxCarsViaTradeA, y: 0 },
-          { x: cA, y: 0 }
-        ],
+        points: aAdvWheat
+          ? [{ x: 0, y: wA }, { x: maxCarsViaTradeA, y: 0 }, { x: cA, y: 0 }]
+          : [{ x: 0, y: maxWheatViaTradeA }, { x: cA, y: 0 }, { x: 0, y: wA }],
         fill: '#3b82f6',
         opacity: 0.2,
         pattern: 'diagonal-right',
@@ -239,7 +240,7 @@ export const comparativeAdvantageModel: EconomicModel = {
     }
 
     // Secondary Graph: Country B
-    const maxCarsViaTradeB = bAdvCar ? cB : (wB / tot);
+    const maxCarsViaTradeB = bAdvWheat ? (wB / tot) : cB;
     const maxWheatViaTradeB = bAdvCar ? (cB * tot) : wB;
 
     const countryBPpcPoints = [
@@ -299,27 +300,25 @@ export const comparativeAdvantageModel: EconomicModel = {
         {
           id: 'specB',
           label: {
-            en: bAdvCar ? 'Country B Specialization: 100% Cars' : 'Country B Specialization: 100% Wheat',
-            zh: bAdvCar ? '国家 B 完全分工点：100% 生产汽车' : '国家 B 完全分工点：100% 生产小麦'
+            en: bAdvCar ? 'Country B Specialization: 100% Cars' : bAdvWheat ? 'Country B Specialization: 100% Wheat' : 'Country B: No Comparative Advantage',
+            zh: bAdvCar ? '国家 B 完全分工点：100% 生产汽车' : bAdvWheat ? '国家 B 完全分工点：100% 生产小麦' : '国家 B：无比较优势'
           },
-          shortLabel: bAdvCar ? 'Spec(C)' : 'Spec(W)',
-          x: bAdvCar ? cB : 0,
-          y: bAdvCar ? 0 : wB,
+          shortLabel: bAdvCar ? 'Spec(C)' : bAdvWheat ? 'Spec(W)' : 'No CA',
+          x: bAdvCar ? cB : bAdvWheat ? 0 : 0,
+          y: bAdvCar ? 0 : bAdvWheat ? wB : 0,
           color: '#059669',
           showDropLines: true,
           xLabel: bAdvCar ? `${cB} Cars` : '0 Cars',
           yLabel: bAdvCar ? '0 Wheat' : `${wB} Wheat`
         }
       ],
-      shadedAreas: isMutuallyBeneficial && bAdvCar ? [
+      shadedAreas: isMutuallyBeneficial && (bAdvCar || bAdvWheat) ? [
         {
           id: 'gainsFromTradeB',
           label: { en: 'Country B: Gains from Trade', zh: '国家 B：贸易利得区' },
-          points: [
-            { x: 0, y: maxWheatViaTradeB },
-            { x: cB, y: 0 },
-            { x: 0, y: wB }
-          ],
+          points: bAdvCar
+            ? [{ x: 0, y: maxWheatViaTradeB }, { x: cB, y: 0 }, { x: 0, y: wB }]
+            : [{ x: 0, y: wB }, { x: maxCarsViaTradeB, y: 0 }, { x: cB, y: 0 }],
           fill: '#10b981',
           opacity: 0.2,
           pattern: 'diagonal-left' as const,
@@ -350,8 +349,8 @@ export const comparativeAdvantageModel: EconomicModel = {
             `${oppCostCarA.toFixed(2)} Wheat`,
             `${oppCostWheatA.toFixed(2)} Cars`,
             {
-              en: aAdvWheat ? 'Wheat (Lower Cost: ' + oppCostWheatA.toFixed(2) + ' < ' + oppCostWheatB.toFixed(2) + ')' : 'Cars',
-              zh: aAdvWheat ? '小麦（成本更低：' + oppCostWheatA.toFixed(2) + ' < ' + oppCostWheatB.toFixed(2) + ' 辆车）' : '汽车'
+              en: aAdvWheat ? 'Wheat (Lower Cost: ' + oppCostWheatA.toFixed(2) + ' < ' + oppCostWheatB.toFixed(2) + ')' : aAdvCar ? 'Cars (Lower Cost: ' + oppCostCarA.toFixed(2) + ' < ' + oppCostCarB.toFixed(2) + ')' : 'None (Equal Costs)',
+              zh: aAdvWheat ? '小麦（成本更低：' + oppCostWheatA.toFixed(2) + ' < ' + oppCostWheatB.toFixed(2) + ' 辆车）' : aAdvCar ? '汽车（成本更低：' + oppCostCarA.toFixed(2) + ' < ' + oppCostCarB.toFixed(2) + ' 蒲式耳小麦）' : '无（机会成本相等）'
             }
           ],
           highlight: aAdvWheat
@@ -365,8 +364,8 @@ export const comparativeAdvantageModel: EconomicModel = {
             `${oppCostCarB.toFixed(2)} Wheat`,
             `${oppCostWheatB.toFixed(2)} Cars`,
             {
-              en: bAdvCar ? 'Cars (Lower Cost: ' + oppCostCarB.toFixed(2) + ' < ' + oppCostCarA.toFixed(2) + ')' : 'Wheat',
-              zh: bAdvCar ? '汽车（成本更低：' + oppCostCarB.toFixed(2) + ' < ' + oppCostCarA.toFixed(2) + ' 小麦）' : '小麦'
+              en: bAdvCar ? 'Cars (Lower Cost: ' + oppCostCarB.toFixed(2) + ' < ' + oppCostCarA.toFixed(2) + ')' : bAdvWheat ? 'Wheat (Lower Cost: ' + oppCostWheatB.toFixed(2) + ' < ' + oppCostWheatA.toFixed(2) + ')' : 'None (Equal Costs)',
+              zh: bAdvCar ? '汽车（成本更低：' + oppCostCarB.toFixed(2) + ' < ' + oppCostCarA.toFixed(2) + ' 蒲式耳小麦）' : bAdvWheat ? '小麦（成本更低：' + oppCostWheatB.toFixed(2) + ' < ' + oppCostWheatA.toFixed(2) + ' 辆车）' : '无（机会成本相等）'
             }
           ],
           highlight: bAdvCar
@@ -402,8 +401,12 @@ export const comparativeAdvantageModel: EconomicModel = {
     ];
 
     const explanation = {
-      en: `For 1 Car, Country A must sacrifice ${oppCostCarA.toFixed(2)} Wheat, while Country B only sacrifices ${oppCostCarB.toFixed(2)} Wheat. Thus, Country B has the comparative advantage in Cars (lower opportunity cost), and Country A has the comparative advantage in Wheat. At the current terms of trade (1 Car = ${tot.toFixed(1)} Wheat), ${isMutuallyBeneficial ? 'both countries gain because Country B sells cars above its domestic cost of ' + oppCostCarB.toFixed(2) + ' and Country A buys cars below its domestic cost of ' + oppCostCarA.toFixed(2) + '. Their Consumption Possibilities Curves (CPC) lie strictly beyond their PPC frontiers!' : 'trade is NOT mutually beneficial because the exchange rate falls outside the acceptable range of ' + lowerBoundTrade.toFixed(2) + ' to ' + upperBoundTrade.toFixed(2) + ' Wheat.'}`,
-      zh: `生产 1 辆汽车，国家 A 必须放弃 ${oppCostCarA.toFixed(2)} 蒲式耳小麦，而国家 B 仅需放弃 ${oppCostCarB.toFixed(2)} 蒲式耳小麦。因此国家 B 在汽车上具有比较优势（机会成本更低），国家 A 在小麦上具有比较优势。在当前贸易条件（1 辆汽车 = ${tot.toFixed(1)} 蒲式耳小麦）下，${isMutuallyBeneficial ? '两国均实现互利共赢：国家 B 以高于国内成本（' + oppCostCarB.toFixed(2) + '）的价格卖出汽车，国家 A 以低于国内成本（' + oppCostCarA.toFixed(2) + '）的价格买入汽车。两国的消费可能性曲线（CPC）均完全超越了各自国内的 PPC 边界！' : '该贸易条件无法实现互利，因为其脱离了两国可接受的互利汇率区间（' + lowerBoundTrade.toFixed(2) + ' 至 ' + upperBoundTrade.toFixed(2) + ' 蒲式耳小麦）。'}`
+      en: !hasComparativeAdvantage
+        ? `Both countries face the same opportunity cost of ${oppCostCarA.toFixed(2)} Wheat per Car. Neither country has a comparative advantage, so specialization and trade cannot create gains from trade.`
+        : `For 1 Car, Country A sacrifices ${oppCostCarA.toFixed(2)} Wheat and Country B sacrifices ${oppCostCarB.toFixed(2)} Wheat. ${aAdvCar ? 'Country A has the comparative advantage in Cars and Country B in Wheat.' : 'Country B has the comparative advantage in Cars and Country A in Wheat.'} At the current terms of trade (1 Car = ${tot.toFixed(1)} Wheat), ${isMutuallyBeneficial ? 'both countries gain because the exchange rate lies strictly between their opportunity costs, expanding consumption beyond their PPCs.' : 'trade is NOT mutually beneficial because the exchange rate falls outside the acceptable range of ' + lowerBoundTrade.toFixed(2) + ' to ' + upperBoundTrade.toFixed(2) + ' Wheat.'}`,
+      zh: !hasComparativeAdvantage
+        ? `两国生产 1 辆汽车的机会成本同为 ${oppCostCarA.toFixed(2)} 蒲式耳小麦，双方均无比较优势，因此专业化和贸易不能创造贸易利得。`
+        : `生产 1 辆汽车，国家 A 放弃 ${oppCostCarA.toFixed(2)} 蒲式耳小麦，国家 B 放弃 ${oppCostCarB.toFixed(2)} 蒲式耳小麦。${aAdvCar ? '国家 A 在汽车上有比较优势，国家 B 在小麦上有比较优势。' : '国家 B 在汽车上有比较优势，国家 A 在小麦上有比较优势。'}当前贸易条件为 1 辆汽车 = ${tot.toFixed(1)} 蒲式耳小麦；${isMutuallyBeneficial ? '该汇率严格位于双方机会成本之间，双方可以通过贸易将消费扩展到 PPC 之外。' : '该汇率超出了 ' + lowerBoundTrade.toFixed(2) + ' 至 ' + upperBoundTrade.toFixed(2) + ' 蒲式耳小麦的互利区间，无法实现互利。'}`
     };
 
     const analysisPoints = [

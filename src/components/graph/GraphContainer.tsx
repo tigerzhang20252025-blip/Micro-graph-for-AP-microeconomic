@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { GraphCalculationOutput, Point2D, KeyPointSpec } from '../../types/graph';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
@@ -6,11 +6,13 @@ import { useAppState } from '../../context/AppStateContext';
 interface GraphContainerProps {
   data: GraphCalculationOutput;
   title: string;
+  visibilityScope: string;
 }
 
-export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) => {
+export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, visibilityScope }) => {
   const { tr } = useLanguage();
   const { layerVisibility, hiddenCurveIds } = useAppState();
+  const clipId = `plot-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   // SVG dimensions & padding (Standard 4:3 high-res responsive viewBox)
   const svgWidth = 640;
@@ -21,7 +23,11 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   const plotHeight = svgHeight - padding.top - padding.bottom;
 
   const { axes, curves, points, shadedAreas } = data;
-  const visibleCurves = curves.filter((c) => c.visible && !hiddenCurveIds?.includes(c.id));
+  const hiddenForThisGraph = hiddenCurveIds[visibilityScope] || [];
+  const visibleCurves = curves.filter((c) => c.visible && !hiddenForThisGraph.includes(c.id));
+  const visiblePoints = points.filter((pt) =>
+    pt.x >= axes.xMin && pt.x <= axes.xMax && pt.y >= axes.yMin && pt.y <= axes.yMax
+  );
 
   // Coordinate transforms: Economic Space -> SVG Space
   const scaleX = (x: number): number => {
@@ -53,6 +59,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   for (let val = axes.xMin; val <= axes.xMax; val += xStep) {
     xTicks.push(Number(val.toFixed(1)));
   }
+  const xTickLabelStride = xTicks.length > 7 ? Math.ceil((xTicks.length - 1) / 6) : 1;
 
   const yTicks: number[] = [];
   const yStep = axes.yStep || (axes.yMax - axes.yMin) / 5;
@@ -118,7 +125,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
   const pointLayouts: PointBadgeLayout[] = [];
 
-  points.forEach((pt) => {
+  visiblePoints.forEach((pt) => {
     const sx = scaleX(pt.x);
     const sy = scaleY(pt.y);
     const textLen = pt.shortLabel.length;
@@ -193,7 +200,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   // ---------------------------------------------------------------------------
   // ANTI-COLLISION ENGINE 2: Drop-Line Badges & Standard Tick Collision Tracking
   // ---------------------------------------------------------------------------
-  const visibleDropX = points.filter((p) => p.showDropLines && p.xLabel);
+  const visibleDropX = visiblePoints.filter((p) => p.showDropLines && p.xLabel);
   const sortedDropX = [...visibleDropX].sort((a, b) => scaleX(a.x) - scaleX(b.x));
   const dropXConfig: Record<string, { tier: number; yPos: number; sx: number }> = {};
   let lastSx = -999;
@@ -217,7 +224,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
   // Active Drop Coordinates for Standard Tick Suppression
   const activeDropXCoords = sortedDropX.map((p) => scaleX(p.x));
 
-  const visibleDropY = points.filter((p) => p.showDropLines && p.yLabel);
+  const visibleDropY = visiblePoints.filter((p) => p.showDropLines && p.yLabel);
   const sortedDropY = [...visibleDropY].sort((a, b) => scaleY(a.y) - scaleY(b.y));
   const dropYConfig: Record<string, { yShift: number; sy: number }> = {};
   let lastSy = -999;
@@ -300,7 +307,9 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
         </h3>
         {hoverCoord && (
           <div className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
-            Q: {hoverCoord.xVal.toFixed(1)} | P: ${hoverCoord.yVal.toFixed(1)}
+            {tr(axes.xLabel)}: {axes.xPrefix || ''}{hoverCoord.xVal.toFixed(1)}{axes.xSuffix || ''}
+            {' | '}
+            {tr(axes.yLabel)}: {axes.yPrefix || ''}{hoverCoord.yVal.toFixed(1)}{axes.ySuffix || ''}
           </div>
         )}
       </div>
@@ -342,6 +351,9 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             <pattern id="pat-dots" width="8" height="8" patternUnits="userSpaceOnUse">
               <circle cx="4" cy="4" r="1.5" fill="#8b5cf6" opacity="0.6" />
             </pattern>
+            <clipPath id={clipId}>
+              <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
+            </clipPath>
           </defs>
 
           {/* Grid Lines */}
@@ -376,7 +388,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
 
           {/* Shaded Welfare Areas (Surpluses, DWL, Tax Revenue) */}
           {layerVisibility.showSurplus && (
-            <g className="welfare-areas">
+            <g className="welfare-areas" clipPath={`url(#${clipId})`}>
               {shadedAreas.map((area) => {
                 if (!area.visible || area.points.length === 0) return null;
                 const pathString = pointsToSvgPath(area.points) + ' Z';
@@ -412,7 +424,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
           {/* Equilibrium Drop Lines & Anti-Collision Axis Badges */}
           {layerVisibility.showDropLines && (
             <g className="drop-lines">
-              {points.map((pt) => {
+              {visiblePoints.map((pt) => {
                 if (!pt.showDropLines) return null;
                 const sx = scaleX(pt.x);
                 const sy = scaleY(pt.y);
@@ -512,7 +524,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
           )}
 
           {/* Economic Curves */}
-          <g className="economic-curves">
+          <g className="economic-curves" clipPath={`url(#${clipId})`}>
             {visibleCurves.map((curve) => {
               const pathD = pointsToSvgPath(curve.points);
 
@@ -530,7 +542,10 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
               );
             })}
 
-            {/* Anti-collision clamped Curve End Labels */}
+          </g>
+
+          {/* Anti-collision clamped Curve End Labels */}
+          <g className="curve-labels">
             {curveLabels.map((lbl) => (
               <g
                 key={`curve-label-${lbl.curveId}`}
@@ -657,14 +672,14 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title }) =
             })}
 
             {/* X Axis Tick Marks & Numbers (with collision suppression) */}
-            {xTicks.map((x) => {
+            {xTicks.map((x, index) => {
               const sx = scaleX(x);
               const isSuppressedX =
                 layerVisibility.showDropLines && activeDropXCoords.some((bx) => Math.abs(bx - sx) < 24);
               return (
                 <g key={`tick-x-${x}`} transform={`translate(${sx}, ${svgHeight - padding.bottom})`}>
                   <line x1="0" y1="0" x2="0" y2="5" stroke="#334155" strokeWidth="1.5" />
-                  {!isSuppressedX && (
+                  {!isSuppressedX && (index % xTickLabelStride === 0 || index === xTicks.length - 1) && (
                     <text
                       x="0"
                       y="18"

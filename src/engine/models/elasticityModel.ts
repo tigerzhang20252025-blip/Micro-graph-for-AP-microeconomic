@@ -182,12 +182,12 @@ export const elasticityModel: EconomicModel = {
         ? 'In the ELASTIC zone (|PED| > 1): Price and Total Revenue move in OPPOSITE directions (P↓ ⇒ TR↑, P↑ ⇒ TR↓).'
         : elasticityCategory === 'inelastic'
         ? 'In the INELASTIC zone (|PED| < 1): Price and Total Revenue move in the SAME direction (P↑ ⇒ TR↑, P↓ ⇒ TR↓).'
-        : 'At UNIT ELASTICITY (|PED| = 1.0): Total Revenue is MAXIMIZED ($2500). Marginal Revenue = $0.',
+        : `At UNIT ELASTICITY (|PED| = 1.0): Total Revenue is MAXIMIZED ($${((a * a) / (4 * b)).toFixed(0)}). Marginal Revenue = $0.`,
       zh: elasticityCategory === 'elastic'
         ? '在【富有弹性区间】（|PED| > 1）：价格与总收益呈【反向变动】（降价 P↓ ⇒ TR↑，提价 P↑ ⇒ TR↓）。'
         : elasticityCategory === 'inelastic'
         ? '在【缺乏弹性区间】（|PED| < 1）：价格与总收益呈【同向变动】（提价 P↑ ⇒ TR↑，降价 P↓ ⇒ TR↓）。'
-        : '在【单位弹性中点】（|PED| = 1.0）：总收益达到【最大值】（$2,500），边际收益 MR = 0。'
+        : `在【单位弹性中点】（|PED| = 1.0）：总收益达到【最大值】（$${((a * a) / (4 * b)).toFixed(0)}），边际收益 MR = 0。`
     };
 
     // Main Graph: Demand Curve with Colorized Segments
@@ -426,7 +426,7 @@ export const elasticityModel: EconomicModel = {
         label: { en: 'Max Potential Revenue', zh: '最大潜在总收益' },
         value: `$${((a * a) / (4 * b)).toFixed(2)}`,
         color: '#059669',
-        formula: 'At Midpoint (P=50, Q=50)'
+        formula: `At Midpoint (P=${(a / 2).toFixed(0)}, Q=${(a / (2 * b)).toFixed(1)})`
       },
       {
         id: 'marginalRev',

@@ -373,6 +373,7 @@ export const LearningMode: React.FC = () => {
               <GraphContainer
                 data={calculationOutput}
                 title={tr(currentActivity.title)}
+                visibilityScope={currentActivity.modelId}
               />
             )}
 

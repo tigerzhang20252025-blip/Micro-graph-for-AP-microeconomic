@@ -280,8 +280,8 @@ export const indifferenceCurveModel: EconomicModel = {
         zh: '切点最优条件：无差异曲线的斜率（-MRS）与预算约束线的斜率（-Px / Py）相等的切点即为效用最大化点，即 MRS = Px / Py。'
       },
       {
-        en: 'Price Change Decomposition: When Px falls, the budget line swings outward. This total change can be decomposed into: (1) Substitution Effect (moving along the same indifference curve to a steeper point) and (2) Income Effect (shifting to a higher indifference curve).',
-        zh: '价格效应分解：当 Px 下降时，预算线向外旋转。总效应可精确分解为：（1）替代效应（在同一条无差异曲线上滑动至更陡峭处，多买便宜商品）；（2）收入效应（因购买力增强而跃迁至更高无差异曲线）。'
+        en: 'Price Change Decomposition: When Px falls, the budget line swings outward and becomes flatter. This total change can be decomposed into: (1) Substitution Effect (moving along the same indifference curve toward more of the relatively cheaper X) and (2) Income Effect (shifting to a higher indifference curve).',
+        zh: '价格效应分解：当 Px 下降时，预算线向外旋转且变得更平。总效应可精确分解为：（1）替代效应（在同一条无差异曲线上转向消费更多相对变便宜的 X）；（2）收入效应（因购买力增强而跃迁至更高无差异曲线）。'
       },
       {
         en: 'Diminishing MRS: Indifference curves are convex to the origin because consumers become progressively less willing to give up scarce Y to gain an additional unit of abundant X.',

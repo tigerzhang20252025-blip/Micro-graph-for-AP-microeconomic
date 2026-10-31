@@ -160,8 +160,14 @@ export const perfectCompetitionModel: EconomicModel = {
       { intercept: marketSIntercept, slope: marketSSlope }
     );
 
-    const marketQ = marketEq ? Math.max(100, marketEq.x) : 700;
-    const marketP = marketEq ? Math.max(10, marketEq.y) : 45;
+    // If demand lies below supply even at Q = 0, there is no positive-trade
+    // equilibrium. Keep Q at zero and use the boundary price rather than
+    // independently clamping Q and P to an off-curve "equilibrium".
+    const hasPositiveMarketTrade = Boolean(marketEq && marketEq.x > 0);
+    const marketQ = hasPositiveMarketTrade && marketEq ? marketEq.x : 0;
+    const marketP = hasPositiveMarketTrade && marketEq
+      ? marketEq.y
+      : Math.max(0, Math.min(marketDIntercept, marketSIntercept));
 
     // 2. Individual Firm Cost Curve Specifications
     // MC = m0 - m1*q + m2*q^2

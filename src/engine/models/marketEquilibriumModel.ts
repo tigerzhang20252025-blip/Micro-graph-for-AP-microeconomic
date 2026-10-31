@@ -335,6 +335,7 @@ export const marketEquilibriumModel: EconomicModel = {
     let actualQ = postInterventionInter ? Math.max(0, postInterventionInter.x) : qStar;
     let priceBuyer = evaluateLinearPrice({ intercept: demandIntercept, slope: demandSlope }, actualQ);
     let priceSeller = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
+    const postInterventionBuyerPrice = priceBuyer;
 
     // Apply Price Controls if selected
     let isBindingControl = false;
@@ -342,24 +343,26 @@ export const marketEquilibriumModel: EconomicModel = {
     let controlDiscrepancyAmount = 0;
 
     if (params.priceControlMode === 'ceiling') {
-      if (params.controlledPrice < pStar) {
+      if (params.controlledPrice < postInterventionBuyerPrice) {
         isBindingControl = true;
-        const qDemandedAtCeiling = (params.controlledPrice - demandIntercept) / demandSlope;
-        const qSuppliedAtCeiling = Math.max(0, (params.controlledPrice - supplyIntercept) / supplySlope);
+        const qDemandedAtCeiling = Math.max(0, (params.controlledPrice - demandIntercept) / demandSlope);
+        // The statutory market price is the buyer price. Suppliers receive it
+        // net of a tax, or plus a production subsidy.
+        const qSuppliedAtCeiling = Math.max(0, (params.controlledPrice - netIntervention - supplyIntercept) / supplySlope);
         actualQ = Math.min(qDemandedAtCeiling, qSuppliedAtCeiling); // short side of the market rule
         priceBuyer = params.controlledPrice;
-        priceSeller = params.controlledPrice;
+        priceSeller = params.controlledPrice - netIntervention;
         shortageOrSurplus = 'shortage';
         controlDiscrepancyAmount = Math.max(0, qDemandedAtCeiling - qSuppliedAtCeiling);
       }
     } else if (params.priceControlMode === 'floor') {
-      if (params.controlledPrice > pStar) {
+      if (params.controlledPrice > postInterventionBuyerPrice) {
         isBindingControl = true;
         const qDemandedAtFloor = Math.max(0, (params.controlledPrice - demandIntercept) / demandSlope);
-        const qSuppliedAtFloor = (params.controlledPrice - supplyIntercept) / supplySlope;
+        const qSuppliedAtFloor = Math.max(0, (params.controlledPrice - netIntervention - supplyIntercept) / supplySlope);
         actualQ = Math.min(qDemandedAtFloor, qSuppliedAtFloor);
         priceBuyer = params.controlledPrice;
-        priceSeller = params.controlledPrice;
+        priceSeller = params.controlledPrice - netIntervention;
         shortageOrSurplus = 'surplus';
         controlDiscrepancyAmount = Math.max(0, qSuppliedAtFloor - qDemandedAtFloor);
       }
@@ -370,39 +373,20 @@ export const marketEquilibriumModel: EconomicModel = {
     const pSupplyAtActualQ = evaluateLinearPrice({ intercept: supplyIntercept, slope: supplySlope }, actualQ);
 
     // Welfare Calculations:
-    let cs = 0;
-    let ps = 0;
-    if (isBindingControl && params.priceControlMode === 'ceiling') {
-      // Consumers pay priceBuyer (Pc) for actualQ (Qs), valuing them up to pDemandAtActualQ (trapezoid)
-      cs = Math.max(0, 0.5 * ((demandIntercept - priceBuyer) + (pDemandAtActualQ - priceBuyer)) * actualQ);
-      ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
-    } else if (isBindingControl && params.priceControlMode === 'floor') {
-      // Producers receive priceSeller (Pf) for actualQ (Qd), costs along Supply up to pSupplyAtActualQ (trapezoid)
-      cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
-      ps = Math.max(0, 0.5 * ((priceSeller - supplyIntercept) + (priceSeller - pSupplyAtActualQ)) * actualQ);
-    } else {
-      cs = Math.max(0, 0.5 * (demandIntercept - priceBuyer) * actualQ);
-      ps = Math.max(0, 0.5 * (priceSeller - supplyIntercept) * actualQ);
-    }
+    // Integrate demand less buyer price and seller price less supply. These
+    // trapezoid formulas work for free-market outcomes and binding controls.
+    const cs = Math.max(0, 0.5 * ((demandIntercept - priceBuyer) + (pDemandAtActualQ - priceBuyer)) * actualQ);
+    const ps = Math.max(0, 0.5 * ((priceSeller - supplyIntercept) + (priceSeller - pSupplyAtActualQ)) * actualQ);
 
     const taxRevenue = params.taxPerUnit > 0 ? params.taxPerUnit * actualQ : 0;
     const subsidyExpense = params.subsidyPerUnit > 0 ? params.subsidyPerUnit * actualQ : 0;
 
-    let dwl = 0;
-    if (params.taxPerUnit > 0) {
-      // Underproduction DWL
-      const deltaQ = Math.max(0, qStar - actualQ);
-      dwl = 0.5 * params.taxPerUnit * deltaQ;
-    } else if (params.subsidyPerUnit > 0) {
-      // Overproduction DWL
-      const deltaQ = Math.max(0, actualQ - qStar);
-      dwl = 0.5 * params.subsidyPerUnit * deltaQ;
-    } else if (isBindingControl) {
-      const deltaQ = Math.max(0, qStar - actualQ);
-      dwl = 0.5 * Math.abs(pDemandAtActualQ - pSupplyAtActualQ) * deltaQ;
-    }
-
     const totalWelfare = cs + ps + taxRevenue - subsidyExpense;
+    const efficientWelfare = Math.max(0, 0.5 * (demandIntercept - supplyIntercept) * qStar);
+    // Taxes and subsidies are transfers in the welfare calculation above; the
+    // gap from the competitive maximum captures either policy alone or a
+    // policy combined with a binding price control.
+    const dwl = Math.max(0, efficientWelfare - totalWelfare);
 
     // Elasticity at market equilibrium
     const ped = calculatePointElasticity(demandSlope, pStar, qStar);
@@ -878,12 +862,21 @@ export const marketEquilibriumModel: EconomicModel = {
       explanationTextEn += `A per-unit tax of $${params.taxPerUnit} creates a tax wedge: buyers pay $${priceBuyer.toFixed(1)} while sellers receive $${priceSeller.toFixed(1)}. Market quantity contracts to ${actualQ.toFixed(1)} units, causing $${dwl.toFixed(1)} in deadweight loss.`;
       explanationTextZh += `征收每单位 $${params.taxPerUnit} 的消费税形成税收楔子：买方支付 $${priceBuyer.toFixed(1)}，卖方实得 $${priceSeller.toFixed(1)}。交易量萎缩至 ${actualQ.toFixed(1)} 单位，造成 $${dwl.toFixed(1)} 的社会死重损失。`;
     } else if (params.subsidyPerUnit > 0) {
-      explanationTextEn += `A per-unit production subsidy of $${params.subsidyPerUnit} lowers the buyer price to $${priceBuyer.toFixed(1)} and raises the seller price to $${priceSeller.toFixed(1)}. Output expands to ${actualQ.toFixed(1)} units (overproduction relative to allocatively efficient Q*=${qStar.toFixed(1)}), generating a deadweight loss of $${dwl.toFixed(1)} because the cost to government exceeds total surplus gains.`;
-      explanationTextZh += `每单位 $${params.subsidyPerUnit} 的生产补贴使买价降至 $${priceBuyer.toFixed(1)}，卖价升至 $${priceSeller.toFixed(1)}。产出扩张至 ${actualQ.toFixed(1)} 单位（超过配置有效水平 Q*=${qStar.toFixed(1)}，造成过度生产），因政府财政支出超过了剩余增长而产生 $${dwl.toFixed(1)} 的无谓损失。`;
-    } else if (isBindingControl) {
+      if (isBindingControl) {
+        explanationTextEn += `A per-unit production subsidy of $${params.subsidyPerUnit} creates a buyer price of $${priceBuyer.toFixed(1)} and a seller receipt of $${priceSeller.toFixed(1)}. The binding price control determines actual trade at ${actualQ.toFixed(1)} units, compared with the efficient Q*=${qStar.toFixed(1)}, producing $${dwl.toFixed(1)} in deadweight loss.`;
+        explanationTextZh += `每单位 $${params.subsidyPerUnit} 的生产补贴使买价为 $${priceBuyer.toFixed(1)}、卖方实得为 $${priceSeller.toFixed(1)}。有约束力的价格管制决定实际交易量为 ${actualQ.toFixed(1)}，相较有效产量 Q*=${qStar.toFixed(1)} 产生 $${dwl.toFixed(1)} 的无谓损失。`;
+      } else {
+        explanationTextEn += `A per-unit production subsidy of $${params.subsidyPerUnit} lowers the buyer price to $${priceBuyer.toFixed(1)} and raises the seller price to $${priceSeller.toFixed(1)}. Output expands to ${actualQ.toFixed(1)} units (overproduction relative to allocatively efficient Q*=${qStar.toFixed(1)}), generating a deadweight loss of $${dwl.toFixed(1)} because the cost to government exceeds total surplus gains.`;
+        explanationTextZh += `每单位 $${params.subsidyPerUnit} 的生产补贴使买价降至 $${priceBuyer.toFixed(1)}，卖价升至 $${priceSeller.toFixed(1)}。产出扩张至 ${actualQ.toFixed(1)} 单位（超过配置有效水平 Q*=${qStar.toFixed(1)}，造成过度生产），因政府财政支出超过了剩余增长而产生 $${dwl.toFixed(1)} 的无谓损失。`;
+      }
+    }
+
+    if (isBindingControl) {
       explanationTextEn += `The binding ${params.priceControlMode === 'ceiling' ? 'Price Ceiling' : 'Price Floor'} set at $${params.controlledPrice} restricts voluntary market transactions to ${actualQ.toFixed(1)} units, producing a ${shortageOrSurplus} of ${controlDiscrepancyAmount.toFixed(1)} units and generating a deadweight loss of $${dwl.toFixed(1)}.`;
       explanationTextZh += `设定在 $${params.controlledPrice} 的有约束力${params.priceControlMode === 'ceiling' ? '价格上限' : '价格下限'}将市场交易量压制在 ${actualQ.toFixed(1)} 单位，引发了 ${controlDiscrepancyAmount.toFixed(1)} 单位的市场${shortageOrSurplus === 'shortage' ? '短缺' : '过剩'}，并造成 $${dwl.toFixed(1)} 的无谓损失。`;
-    } else if (explanationTextEn === '') {
+    }
+
+    if (explanationTextEn === '') {
       explanationTextEn = `At the competitive equilibrium (P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}), Marginal Benefit equals Marginal Cost. Total economic surplus ($${totalWelfare.toFixed(1)}) is maximized with zero deadweight loss.`;
       explanationTextZh = `在完全竞争均衡点（P* = $${pStar.toFixed(1)}, Q* = ${qStar.toFixed(1)}），边际收益等于边际成本（MB = MC）。社会总剩余（$${totalWelfare.toFixed(1)}）达到最大，无谓损失为零。`;
     }

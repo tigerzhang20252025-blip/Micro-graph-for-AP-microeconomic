@@ -187,8 +187,8 @@ export const productionFunctionModel: EconomicModel = {
     let stageClass = 'bg-blue-50 text-blue-700';
 
     if (currentL < 9.0) {
-      stageNameEn = 'Stage I: Increasing Marginal Returns';
-      stageNameZh = '第一阶段：边际报酬递增';
+      stageNameEn = 'Stage I: Rising Average Product';
+      stageNameZh = '第一阶段：平均产量上升';
       stageClass = 'bg-emerald-50 text-emerald-700';
     } else if (currentL > 12.0) {
       stageNameEn = 'Stage III: Negative Returns (Overcrowding)';

@@ -129,13 +129,15 @@ export const utilityMaximizationModel: EconomicModel = {
     };
 
     const maxUnitsX = Math.floor(income / px);
-    for (let qx = 0; qx <= Math.min(10, maxUnitsX); qx++) {
-      const remainingIncome = income - qx * px;
-      const qy = Math.floor(remainingIncome / py);
-      if (qy >= 0) {
-        const currentTU = tuX(qx) + tuY(qy);
+    const maxUnitsY = Math.floor(income / py);
+    // Search every affordable discrete bundle. Do not force the consumer to
+    // spend income on units whose marginal utility has already fallen to zero.
+    for (let qx = 0; qx <= maxUnitsX; qx++) {
+      for (let qy = 0; qy <= maxUnitsY; qy++) {
         const spent = qx * px + qy * py;
-        if (currentTU > maxTotalUtility || (currentTU === maxTotalUtility && spent > bestSpent)) {
+        if (spent > income) continue;
+        const currentTU = tuX(qx) + tuY(qy);
+        if (currentTU > maxTotalUtility || (currentTU === maxTotalUtility && spent < bestSpent)) {
           maxTotalUtility = currentTU;
           bestQx = qx;
           bestQy = qy;
@@ -301,8 +303,8 @@ export const utilityMaximizationModel: EconomicModel = {
     ];
 
     const explanation = {
-      en: `The consumer maximizes satisfaction when the marginal utility per dollar spent on Good X equals the marginal utility per dollar spent on Good Y (MUx / Px = MUy / Py) while exhaustively spending the income budget ($${bestSpent} of $${income}). Consuming ${bestQx} units of Good X ($${bestQx * px}) and ${bestQy} units of Good Y ($${bestQy * py}) yields a maximized Total Utility of ${maxTotalUtility} utils. If the consumer shifted one dollar from X to Y, they would lose ${muPerDollarX.toFixed(1)} utils while gaining only ${muPerDollarY.toFixed(1)} utils, reducing total satisfaction!`,
-      zh: `消费者的效用最大化准则：花在商品 X 上的最后一美元边际效用必须等于花在商品 Y 上的最后一美元边际效用（MUx / Px = MUy / Py），且总支出不超过既定预算（实际支出 $${bestSpent} / 预算 $${income}）。在购买 ${bestQx} 件商品 X（花费 $${bestQx * px}）和 ${bestQy} 件商品 Y（花费 $${bestQy * py}）时，消费者达到总效用最大化（${maxTotalUtility} utils）。若将一美元从 X 转向 Y，将净损失 ${muPerDollarX.toFixed(1)} 效用而仅获得 ${muPerDollarY.toFixed(1)} 效用，使总满足度下降！`
+      en: `The consumer maximizes Total Utility at ${bestQx} units of X ($${bestQx * px}) and ${bestQy} units of Y ($${bestQy * py}), spending $${bestSpent} of the $${income} budget. With indivisible goods, the final MU-per-dollar values may be close rather than exactly equal, and unspent income can be optimal once every additional affordable unit has zero marginal utility.`,
+      zh: `消费者在购买 ${bestQx} 件 X（花费 $${bestQx * px}）与 ${bestQy} 件 Y（花费 $${bestQy * py}）时实现总效用最大化，共支出 $${bestSpent} / $${income}。由于商品不可分割，最后一单位的每美元边际效用可能只接近而非严格相等；当所有可额外购买单位的边际效用均为零时，保留未花完的预算也可能最优。`
     };
 
     const analysisPoints = [

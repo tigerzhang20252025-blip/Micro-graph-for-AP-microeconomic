@@ -109,7 +109,7 @@ export const GraphWorkspace: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Chart Container, Secondary Graph, Custom Table & Calculations (7 Cols) */}
         <div className="lg:col-span-7 space-y-6">
-          <GraphContainer data={graphOutput} title={tr(model.name)} />
+          <GraphContainer data={graphOutput} title={tr(model.name)} visibilityScope={model.id} />
 
           {/* Secondary Graph (for Dual-Panel Models like Total Revenue or Firm side-by-side) */}
           {graphOutput.secondaryGraph && (
@@ -124,6 +124,7 @@ export const GraphWorkspace: React.FC = () => {
                 analysisPoints: []
               }}
               title={tr(graphOutput.secondaryGraph.title)}
+              visibilityScope={`${model.id}:secondary`}
             />
           )}
 

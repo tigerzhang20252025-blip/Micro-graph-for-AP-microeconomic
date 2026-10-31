@@ -141,11 +141,6 @@ export const publicGoodsModel: EconomicModel = {
     const mc = params.marginalCost;
     const slope = 3.0; // slope magnitude for individual MB: MB = a - 3*Q
 
-    // Choke quantities: where MB drops to 0
-    const q1Choke = a1 / slope;
-    const q2Choke = a2 / slope;
-    const minChoke = Math.min(q1Choke, q2Choke);
-
     // Individual MB functions
     const mb1 = (q: number): number => Math.max(0, a1 - slope * q);
     const mb2 = (q: number): number => Math.max(0, a2 - slope * q);
@@ -159,7 +154,10 @@ export const publicGoodsModel: EconomicModel = {
     let qOpt = 0;
     const totalIntercept = a1 + a2;
     if (mc < totalIntercept) {
-      if (mc >= (Math.abs(a1 - a2) + (minChoke * slope))) {
+      // At the kink the lower valuation is zero, so MSB equals the
+      // difference between the two intercepts.  Costs above that value
+      // intersect the segment where both consumers still have positive MB.
+      if (mc >= Math.abs(a1 - a2)) {
         // Intersects in the joint segment (both consumers have positive MB)
         qOpt = (totalIntercept - mc) / (2 * slope);
       } else {
@@ -169,7 +167,7 @@ export const publicGoodsModel: EconomicModel = {
       }
     }
 
-    qOpt = Math.max(0, Math.min(18, Number(qOpt.toFixed(2))));
+    qOpt = Math.max(0, Math.min(18, qOpt));
 
     // Points generation
     const qMax = 18;
@@ -246,7 +244,7 @@ export const publicGoodsModel: EconomicModel = {
         y: mc,
         color: '#4f46e5',
         showDropLines: true,
-        xLabel: `Q*=${qOpt}`,
+        xLabel: `Q*=${qOpt.toFixed(2)}`,
         yLabel: `$${mc}`
       }
     ];
@@ -313,7 +311,7 @@ export const publicGoodsModel: EconomicModel = {
         {
           id: 'res-optimal-q',
           label: { en: 'Socially Optimal Quantity (Q*)', zh: '社会最优提供数量（Q*）' },
-          value: `${qOpt} units`,
+          value: `${qOpt.toFixed(2)} units`,
           color: '#4f46e5'
         },
         {
@@ -338,8 +336,8 @@ export const publicGoodsModel: EconomicModel = {
         }
       ],
       explanation: {
-        en: `Because public goods are non-rival, both Consumer 1 and Consumer 2 can enjoy the exact same unit simultaneously. Therefore, the market demand curve is formed by VERTICAL summation: MSB = MB₁ + MB₂ ($${mb1(qOpt).toFixed(1)} + $${mb2(qOpt).toFixed(1)} = $${msbFunc(qOpt).toFixed(1)} at Q* = ${qOpt}). The socially optimal provision occurs where MSB = MC ($${mc}). Due to non-excludability and the free-rider problem, private competitive markets fail to provide this optimal output, justifying government intervention or public financing.`,
-        zh: `由于公共物品具备非竞争性，消费者 1 和消费者 2 可以同时享用完全相同的产出。因此，全社会的总需求曲线必须通过【垂直求和】得出：MSB = MB₁ + MB₂（在 Q* = ${qOpt} 时，各自意愿为 $${mb1(qOpt).toFixed(1)} 和 $${mb2(qOpt).toFixed(1)}，纵向相加为 $${msbFunc(qOpt).toFixed(1)}）。社会最优供给量位于 MSB = MC（$${mc}）交点处。由于非排他性与搭便车行为，自由私人市场无法自发提供该最优产量，必须通过政府公共财政资助或统一提供。`
+        en: `Because public goods are non-rival, both Consumer 1 and Consumer 2 can enjoy the exact same unit simultaneously. Therefore, the market demand curve is formed by VERTICAL summation: MSB = MB₁ + MB₂ ($${mb1(qOpt).toFixed(1)} + $${mb2(qOpt).toFixed(1)} = $${msbFunc(qOpt).toFixed(1)} at Q* = ${qOpt.toFixed(2)}). The socially optimal provision occurs where MSB = MC ($${mc}). Due to non-excludability and the free-rider problem, private competitive markets fail to provide this optimal output, justifying government intervention or public financing.`,
+        zh: `由于公共物品具备非竞争性，消费者 1 和消费者 2 可以同时享用完全相同的产出。因此，全社会的总需求曲线必须通过【垂直求和】得出：MSB = MB₁ + MB₂（在 Q* = ${qOpt.toFixed(2)} 时，各自意愿为 $${mb1(qOpt).toFixed(1)} 和 $${mb2(qOpt).toFixed(1)}，纵向相加为 $${msbFunc(qOpt).toFixed(1)}）。社会最优供给量位于 MSB = MC（$${mc}）交点处。由于非排他性与搭便车行为，自由私人市场无法自发提供该最优产量，必须通过政府公共财政资助或统一提供。`
       },
       analysisPoints: [
         {

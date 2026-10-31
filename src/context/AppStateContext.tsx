@@ -32,8 +32,8 @@ interface AppStateContextType {
     showGrid: boolean;
   };
   toggleLayer: (layer: 'showSurplus' | 'showDropLines' | 'showGrid') => void;
-  hiddenCurveIds: string[];
-  toggleCurveVisibility: (curveId: string) => void;
+  hiddenCurveIds: Record<string, string[]>;
+  toggleCurveVisibility: (modelId: string, curveId: string) => void;
 
   // Navigation helpers
   navigateToTopic: (topicId: string) => void;
@@ -146,7 +146,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     showGrid: true,
   });
 
-  const [hiddenCurveIds, setHiddenCurveIds] = useState<string[]>([]);
+  const [hiddenCurveIds, setHiddenCurveIds] = useState<Record<string, string[]>>({});
 
   const toggleLayer = (layer: 'showSurplus' | 'showDropLines' | 'showGrid') => {
     setLayerVisibility(prev => ({
@@ -155,10 +155,16 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     }));
   };
 
-  const toggleCurveVisibility = (curveId: string) => {
-    setHiddenCurveIds(prev =>
-      prev.includes(curveId) ? prev.filter(id => id !== curveId) : [...prev, curveId]
-    );
+  const toggleCurveVisibility = (modelId: string, curveId: string) => {
+    setHiddenCurveIds(prev => {
+      const hiddenForModel = prev[modelId] || [];
+      return {
+        ...prev,
+        [modelId]: hiddenForModel.includes(curveId)
+          ? hiddenForModel.filter(id => id !== curveId)
+          : [...hiddenForModel, curveId]
+      };
+    });
   };
 
   const updateModelParam = (modelId: string, paramKey: string, value: any) => {
