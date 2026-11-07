@@ -273,7 +273,7 @@ export const monopolyModel: EconomicModel = {
     const atcPts: { x: number; y: number }[] = [];
     for (let cq = 4; cq <= xMax; cq += 1.5) {
       const atc = evaluateFirmATC(cq);
-      if (atc <= yMax) atcPts.push({ x: Number(cq.toFixed(2)), y: Number(atc.toFixed(2)) });
+      if (Number.isFinite(atc) && atc >= 0) atcPts.push({ x: Number(cq.toFixed(2)), y: Number(atc.toFixed(2)) });
     }
 
     const curves: CurveSpec[] = [

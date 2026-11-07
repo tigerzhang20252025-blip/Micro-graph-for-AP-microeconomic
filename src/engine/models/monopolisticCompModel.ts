@@ -186,7 +186,7 @@ export const monopolisticCompModel: EconomicModel = {
     const atcPoints: Point2D[] = [];
     for (let q = 4; q <= xMax; q += 1) {
       const atcVal = FC / q + 10 + 0.5 * mcSlope * q;
-      if (atcVal <= yMax + 20) {
+      if (Number.isFinite(atcVal) && atcVal >= 0) {
         atcPoints.push({ x: Number(q.toFixed(1)), y: Number(atcVal.toFixed(2)) });
       }
     }

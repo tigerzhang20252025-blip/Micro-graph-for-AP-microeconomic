@@ -1,6 +1,8 @@
 import { AP_TOPICS, AP_UNITS } from '../data/topicRegistry';
 import { translations } from '../i18n/translations';
-import { getModelById } from '../engine/models/index';
+import { ECONOMIC_MODELS, getModelById } from '../engine/models/index';
+import { resolveGraphDomain } from '../engine/graphDomain';
+import { GraphCalculationOutput, SecondaryGraphSpec } from '../types/graph';
 import { LEARNING_ACTIVITIES } from '../data/learningActivities';
 import { PRACTICE_QUESTIONS } from '../data/practiceQuestions';
 import { AP_DECISION_RULES, AP_EXAM_MISTAKES, AP_FORMULAS } from '../data/referenceContent';
@@ -485,9 +487,90 @@ for (const q of PRACTICE_QUESTIONS) {
   assert(variant.isDynamic === true, `Variant for "${q.id}" is marked dynamic`);
 }
 
+// 25. Every generated graph item must fit the final displayed domain.
+// Exercise defaults, presets, and every control boundary so future model
+// changes cannot silently push a curve, key point, or welfare area off-canvas.
+console.log('\n--- 25. Graph Content Visibility & Axis Expansion Audit ---');
+
+const graphVisibilityErrors: string[] = [];
+const uniqueModels = Array.from(new Map(Object.values(ECONOMIC_MODELS).map(model => [model.id, model])).values());
+
+const auditGraph = (modelId: string, caseName: string, graphName: string, graph: GraphCalculationOutput | SecondaryGraphSpec) => {
+  const graphAreas = graph.shadedAreas || [];
+  const domain = resolveGraphDomain({
+    axes: graph.axes,
+    curves: graph.curves,
+    points: graph.points,
+    shadedAreas: graphAreas
+  }).axes;
+  const tolerance = 1e-7;
+  const checkPoint = (x: number, y: number, item: string) => {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      graphVisibilityErrors.push(`${modelId}/${caseName}/${graphName}/${item}: non-finite (${x}, ${y})`);
+      return;
+    }
+    if (x < domain.xMin - tolerance || x > domain.xMax + tolerance || y < domain.yMin - tolerance || y > domain.yMax + tolerance) {
+      graphVisibilityErrors.push(`${modelId}/${caseName}/${graphName}/${item}: (${x}, ${y}) outside resolved domain`);
+    }
+  };
+
+  for (const curve of graph.curves.filter(curve => curve.visible)) {
+    curve.points.forEach((point, index) => checkPoint(point.x, point.y, `curve:${curve.id}[${index}]`));
+  }
+  graph.points.forEach(point => checkPoint(point.x, point.y, `point:${point.id}`));
+  for (const area of graphAreas.filter(area => area.visible)) {
+    area.points.forEach((point, index) => checkPoint(point.x, point.y, `area:${area.id}[${index}]`));
+  }
+};
+
+for (const model of uniqueModels) {
+  const cases: Array<{ name: string; params: Record<string, any> }> = [
+    { name: 'defaults', params: { ...model.defaultParams } },
+    ...(model.presets || []).map(preset => ({
+      name: `preset:${preset.id}`,
+      params: { ...model.defaultParams, ...preset.params }
+    }))
+  ];
+
+  for (const control of model.controls) {
+    if (control.type === 'slider') {
+      cases.push(
+        { name: `${control.id}:min`, params: { ...model.defaultParams, [control.id]: control.min } },
+        { name: `${control.id}:max`, params: { ...model.defaultParams, [control.id]: control.max } }
+      );
+    } else if (control.type === 'select') {
+      for (const option of control.options) {
+        cases.push({ name: `${control.id}:${option.id}`, params: { ...model.defaultParams, [control.id]: option.id } });
+      }
+    } else if (control.type === 'toggle') {
+      cases.push(
+        { name: `${control.id}:off`, params: { ...model.defaultParams, [control.id]: false } },
+        { name: `${control.id}:on`, params: { ...model.defaultParams, [control.id]: true } }
+      );
+    }
+  }
+
+  for (const testCase of cases) {
+    try {
+      const output = model.calculate(testCase.params);
+      auditGraph(model.id, testCase.name, 'primary', output);
+      if (output.secondaryGraph) auditGraph(model.id, testCase.name, 'secondary', output.secondaryGraph);
+    } catch (error) {
+      graphVisibilityErrors.push(`${model.id}/${testCase.name}: calculation threw ${String(error)}`);
+    }
+  }
+}
+
+assert(
+  graphVisibilityErrors.length === 0,
+  graphVisibilityErrors.length === 0
+    ? `All ${uniqueModels.length} models keep generated graph content visible at defaults, presets, and control boundaries`
+    : `Graph visibility audit found ${graphVisibilityErrors.length} issues:\n${graphVisibilityErrors.slice(0, 12).join('\n')}`
+);
+
 console.log('\n==============================================');
 if (failedTests === 0) {
-  console.log('🎉 ALL 24 AUDIT SUITES PASSED WITH 0 FAILURES!');
+  console.log('🎉 ALL 25 AUDIT SUITES PASSED WITH 0 FAILURES!');
   console.log('💎 100% COMPLETE AP MICROECONOMICS GRAPH, 31-TEMPLATE DYNAMIC PRACTICE & ANTI-COLLISION ENGINE VERIFIED!');
 } else {
   console.error(`💥 AUDIT FAILED WITH ${failedTests} FAILURES`);

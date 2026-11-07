@@ -2,6 +2,7 @@ import React, { useId, useState } from 'react';
 import { GraphCalculationOutput, Point2D, KeyPointSpec } from '../../types/graph';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
+import { resolveGraphDomain } from '../../engine/graphDomain';
 
 interface GraphContainerProps {
   data: GraphCalculationOutput;
@@ -22,12 +23,17 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
   const plotWidth = svgWidth - padding.left - padding.right;
   const plotHeight = svgHeight - padding.top - padding.bottom;
 
-  const { axes, curves, points, shadedAreas } = data;
+  const { curves, points, shadedAreas } = data;
   const hiddenForThisGraph = hiddenCurveIds[visibilityScope] || [];
   const visibleCurves = curves.filter((c) => c.visible && !hiddenForThisGraph.includes(c.id));
-  const visiblePoints = points.filter((pt) =>
-    pt.x >= axes.xMin && pt.x <= axes.xMax && pt.y >= axes.yMin && pt.y <= axes.yMax
-  );
+  const domain = resolveGraphDomain({
+    axes: data.axes,
+    curves: curves.filter((curve) => curve.visible),
+    points,
+    shadedAreas
+  });
+  const axes = domain.axes;
+  const visiblePoints = points.filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y));
 
   // Coordinate transforms: Economic Space -> SVG Space
   const scaleX = (x: number): number => {
@@ -165,7 +171,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
       }
 
       // 3. Collision with other point core dots
-      for (const other of points) {
+      for (const other of visiblePoints) {
         if (other.id === pt.id) continue;
         const osx = scaleX(other.x);
         const osy = scaleY(other.y);
@@ -310,6 +316,11 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
             {tr(axes.xLabel)}: {axes.xPrefix || ''}{hoverCoord.xVal.toFixed(1)}{axes.xSuffix || ''}
             {' | '}
             {tr(axes.yLabel)}: {axes.yPrefix || ''}{hoverCoord.yVal.toFixed(1)}{axes.ySuffix || ''}
+          </div>
+        )}
+        {domain.expanded && (
+          <div className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-1 rounded-md border border-amber-200">
+            {tr({ en: 'Axes expanded to show all content', zh: '坐标轴已自动扩展以显示全部内容' })}
           </div>
         )}
       </div>

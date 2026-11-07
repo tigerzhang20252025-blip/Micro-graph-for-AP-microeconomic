@@ -34,6 +34,7 @@ interface AppStateContextType {
   toggleLayer: (layer: 'showSurplus' | 'showDropLines' | 'showGrid') => void;
   hiddenCurveIds: Record<string, string[]>;
   toggleCurveVisibility: (modelId: string, curveId: string) => void;
+  showAllCurves: (modelId: string) => void;
 
   // Navigation helpers
   navigateToTopic: (topicId: string) => void;
@@ -167,6 +168,13 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     });
   };
 
+  const showAllCurves = (modelId: string) => {
+    setHiddenCurveIds(prev => ({
+      ...prev,
+      [modelId]: []
+    }));
+  };
+
   const updateModelParam = (modelId: string, paramKey: string, value: any) => {
     setModelParamsState(prev => ({
       ...prev,
@@ -247,6 +255,7 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     toggleLayer,
     hiddenCurveIds,
     toggleCurveVisibility,
+    showAllCurves,
     navigateToTopic,
     navigateToGraph
   };

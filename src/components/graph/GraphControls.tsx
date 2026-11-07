@@ -22,7 +22,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
   onApplyPreset
 }) => {
   const { language, t, tr } = useLanguage();
-  const { layerVisibility, toggleLayer, hiddenCurveIds, toggleCurveVisibility } = useAppState();
+  const { layerVisibility, toggleLayer, hiddenCurveIds, toggleCurveVisibility, showAllCurves } = useAppState();
   const [expandedPresets, setExpandedPresets] = useState(false);
 
   const presets = model.presets || [];
@@ -272,9 +272,20 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
         {/* Dynamic Individual Curve Visibility Controls */}
         {curves && curves.length > 0 && (
           <div className="pt-2.5 border-t border-slate-100 space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <Eye className="w-3.5 h-3.5 text-slate-500" />
-              <span>{t.showCurveLayers}</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                <span>{t.showCurveLayers}</span>
+              </div>
+              {(hiddenCurveIds[model.id] || []).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => showAllCurves(model.id)}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  {language === 'zh' ? '显示全部曲线' : 'Show all curves'}
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
               {curves.map((curve) => {

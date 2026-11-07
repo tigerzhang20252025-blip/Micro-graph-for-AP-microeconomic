@@ -160,7 +160,7 @@ export const utilityMaximizationModel: EconomicModel = {
       11,
       40,
       0,
-      yMax
+      Number.POSITIVE_INFINITY
     );
 
     const muPyPoints = generateLinearPoints(
@@ -169,7 +169,7 @@ export const utilityMaximizationModel: EconomicModel = {
       7.5,
       40,
       0,
-      yMax
+      Number.POSITIVE_INFINITY
     );
 
     const curves: CurveSpec[] = [
