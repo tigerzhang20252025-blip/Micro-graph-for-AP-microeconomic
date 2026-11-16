@@ -63,9 +63,11 @@ function expandDimension(
 }
 
 /**
- * Expands configured axes only when visible economic content would otherwise
- * be clipped. Configured domains remain the pedagogical baseline; curves,
- * points and welfare areas are never silently discarded for exceeding it.
+ * Expands configured axes when key points, visible shaded areas, or an entire
+ * visible curve would otherwise fall outside the plot window. Asymptotic tails
+ * of curves that cross the plot window remain clipped at the border via
+ * Liang-Barsky clipping so vertical asymptotes (e.g. AFC/ATC near Q=0) do not
+ * distort standard textbook proportions.
  */
 export function resolveGraphDomain(input: GraphDomainInput): ResolvedGraphDomain {
   const xValues: number[] = [];
@@ -77,18 +79,25 @@ export function resolveGraphDomain(input: GraphDomainInput): ResolvedGraphDomain
     }
   };
 
-  for (const curve of input.curves) {
-    if (!curve.visible) continue;
-    for (const point of curve.points) addPoint(point.x, point.y);
-  }
   for (const point of input.points) addPoint(point.x, point.y);
   for (const area of input.shadedAreas || []) {
     if (!area.visible) continue;
     for (const point of area.points) addPoint(point.x, point.y);
   }
 
-  const x = expandDimension(input.axes.xMin, input.axes.xMax, xValues);
-  const y = expandDimension(input.axes.yMin, input.axes.yMax, yValues);
+  const { xMin, xMax, yMin, yMax } = input.axes;
+  for (const curve of input.curves) {
+    if (!curve.visible || curve.points.length === 0) continue;
+    const hasPointInBaseDomain = curve.points.some(
+      (pt) => finite(pt.x) && finite(pt.y) && pt.x >= xMin && pt.x <= xMax && pt.y >= yMin && pt.y <= yMax
+    );
+    if (!hasPointInBaseDomain) {
+      for (const point of curve.points) addPoint(point.x, point.y);
+    }
+  }
+
+  const x = expandDimension(xMin, xMax, xValues);
+  const y = expandDimension(yMin, yMax, yValues);
   const expanded = x.expanded || y.expanded;
 
   return {

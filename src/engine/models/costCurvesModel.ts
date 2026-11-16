@@ -223,22 +223,18 @@ export const costCurvesModel: EconomicModel = {
     const avcPoints: Point2D[] = [];
     const afcPoints: Point2D[] = [];
 
-    // Q=2 is the smallest quantity the learner can select. Starting there
-    // keeps the fixed-cost curves economically useful without hiding their
-    // high low-output values behind the original fixed y-axis ceiling.
-    const minCurveQ = 2;
-    const dq = (xMax - minCurveQ) / steps;
-    for (let i = 0; i <= steps; i++) {
-      const currentQ = minCurveQ + i * dq;
+    const dq = xMax / steps;
+    for (let i = 1; i <= steps; i++) {
+      const currentQ = i * dq;
       const mc = evaluateMC(costParams, currentQ);
       const atc = evaluateATC(costParams, currentQ);
       const avc = evaluateAVC(costParams, currentQ);
       const afc = evaluateAFC(costParams, currentQ);
 
-      if (Number.isFinite(mc) && mc >= 0) mcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(mc.toFixed(2)) });
-      if (Number.isFinite(atc) && atc >= 0) atcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(atc.toFixed(2)) });
-      if (Number.isFinite(avc) && avc >= 0) avcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(avc.toFixed(2)) });
-      if (Number.isFinite(afc) && afc >= 0) afcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(afc.toFixed(2)) });
+      if (mc >= 0 && mc <= yMax + 5) mcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(mc.toFixed(2)) });
+      if (atc >= 0 && atc <= yMax + 5) atcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(atc.toFixed(2)) });
+      if (avc >= 0 && avc <= yMax + 5) avcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(avc.toFixed(2)) });
+      if (afc >= 0 && afc <= yMax + 5) afcPoints.push({ x: Number(currentQ.toFixed(2)), y: Number(afc.toFixed(2)) });
     }
 
     const curves: CurveSpec[] = [];
@@ -370,7 +366,9 @@ export const costCurvesModel: EconomicModel = {
         { en: 'ATC ($/unit)', zh: '平均总成本 (ATC)' },
         { en: 'MC ($/unit)', zh: '边际成本 (MC)' }
       ],
-      rows: [5, 10, 15, Math.round(qMinAVC), 20, Math.round(qMinATC), 30, 40].map((sampleQ) => {
+      rows: Array.from(new Set([5, 10, 15, Math.round(qMinAVC), 20, Math.round(qMinATC), 30, 40]))
+        .sort((a, b) => a - b)
+        .map((sampleQ) => {
         const sampleAVC = evaluateAVC(costParams, sampleQ);
         const sampleATC = evaluateATC(costParams, sampleQ);
         const sampleAFC = evaluateAFC(costParams, sampleQ);

@@ -18,7 +18,7 @@ export interface MistakeRecord {
   topicCode: string;
   topicId: string;
   prompt: BilingualText;
-  userWrongOptionId: 'A' | 'B' | 'C' | 'D';
+  userWrongOptionId: 'A' | 'B' | 'C' | 'D' | 'SKIPPED';
   correctOptionId: 'A' | 'B' | 'C' | 'D';
   explanation: BilingualText;
   timestamp: number;

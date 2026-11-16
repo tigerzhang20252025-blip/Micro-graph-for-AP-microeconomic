@@ -70,13 +70,9 @@ export const TOPIC_INITIAL_PARAMS: Record<string, Record<string, any>> = {
     showBaselineComparison: false
   },
   'shutdown-rule': {
-    fixedCost: 120,
-    perUnitTax: 0,
-    chosenQuantity: 18,
-    showMC: true,
-    showATC: true,
-    showAVC: true,
-    showAFC: true
+    marketDemandShift: -20,
+    firmFixedCost: 110,
+    firmEntryExitAdjustment: 0
   },
   'cost-curves-short-run': {
     fixedCost: 120,
@@ -206,11 +202,12 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
       const model = getModelById(topic.graphModelId);
       const targetModelKey = model ? model.id : topic.graphModelId;
       setSelectedModelId(targetModelKey);
-      // Auto-apply topic-specific preset params if defined
+      // Auto-apply topic-specific preset params merged on top of model defaults
       if (TOPIC_INITIAL_PARAMS[topicId]) {
+        const baseDefaults = model ? model.defaultParams : {};
         setModelParamsState(prev => ({
           ...prev,
-          [targetModelKey]: { ...TOPIC_INITIAL_PARAMS[topicId] }
+          [targetModelKey]: { ...baseDefaults, ...TOPIC_INITIAL_PARAMS[topicId] }
         }));
       }
       setCurrentView('graph');
@@ -223,13 +220,16 @@ export const AppStateProvider: React.FC<{ children: ReactNode }> = ({ children }
     const model = getModelById(modelId);
     const targetModelKey = model ? model.id : modelId;
     setSelectedModelId(targetModelKey);
-    const effectiveTopicId = topicId || AP_TOPICS.find((t) => t.graphModelId === modelId || t.id === modelId)?.id;
+    const matchedById = AP_TOPICS.find((t) => t.id === (topicId || modelId));
+    const matchedByModel = AP_TOPICS.find((t) => t.graphModelId === targetModelKey || t.graphModelId === modelId);
+    const effectiveTopicId = topicId || matchedById?.id || matchedByModel?.id;
     if (effectiveTopicId) {
       setSelectedTopicId(effectiveTopicId);
       if (TOPIC_INITIAL_PARAMS[effectiveTopicId]) {
+        const baseDefaults = model ? model.defaultParams : {};
         setModelParamsState(prev => ({
           ...prev,
-          [targetModelKey]: { ...TOPIC_INITIAL_PARAMS[effectiveTopicId] }
+          [targetModelKey]: { ...baseDefaults, ...TOPIC_INITIAL_PARAMS[effectiveTopicId] }
         }));
       }
     }

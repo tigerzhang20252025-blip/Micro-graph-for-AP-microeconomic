@@ -2,23 +2,34 @@ import { PracticeQuestion } from '../../data/practiceQuestions';
 import { randomInt, randomChoice, buildFourOptions } from './helper';
 
 export function generateFactorMarketHiringQuestion(): PracticeQuestion {
-  const wage = randomChoice([20, 24, 30, 40]);
-  const productPrice = randomChoice([2, 4, 5]);
-
-  // Construct discrete schedule of workers:
-  // L = 1: MP = 12 => MRP = 12 * P
-  // L = 2: MP = 10 => MRP = 10 * P
-  // L = 3: MP = 8  => MRP = 8 * P
-  // L = 4: MP = 6  => MRP = 6 * P
-  // L = 5: MP = 4  => MRP = 4 * P
-  // L = 6: MP = 2  => MRP = 2 * P
+  const ordinal = (n: number): string => {
+    const mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  };
+  const { wage, productPrice } = randomChoice([
+    { wage: 20, productPrice: 2 },
+    { wage: 24, productPrice: 3 },
+    { wage: 30, productPrice: 5 },
+    { wage: 36, productPrice: 4 },
+    { wage: 40, productPrice: 5 },
+    { wage: 28, productPrice: 4 }
+  ]);
+  // Target MP where MRP = Wage => P * MP = Wage => MP = Wage / P (exact integers)
   const targetMP = wage / productPrice;
   const adjWorkers = randomChoice([3, 4, 5]);
+  const ordCurr = ordinal(adjWorkers);
+  const ordNext = ordinal(adjWorkers + 1);
 
   const { options, correctOptionId } = buildFourOptions(
     {
       text: {
-        en: `Hire ${adjWorkers} workers, because MRP >= MFC (Wage) for the ${adjWorkers}th worker`,
+        en: `Hire ${adjWorkers} workers, because MRP >= MFC (Wage) for the ${ordCurr} worker`,
         zh: `雇佣 ${adjWorkers} 名工人，因为第 ${adjWorkers} 名工人的 MRP >= MFC（工资率）`
       },
       explanation: {
@@ -68,7 +79,7 @@ export function generateFactorMarketHiringQuestion(): PracticeQuestion {
     isDynamic: true,
     templateId: 'dyn-factor-mrp-mfc',
     prompt: {
-      en: `A firm operates in a competitive labor market paying a market wage of $${wage}/worker and sells output in a competitive product market at P = $${productPrice}/unit. The ${adjWorkers}th worker has a Marginal Product (MP) of ${targetMP} units, while the ${adjWorkers + 1}th worker has an MP of ${Math.max(1, targetMP - 2)} units. How many workers should the firm hire to maximize profits?`,
+      en: `A firm operates in a competitive labor market paying a market wage of $${wage}/worker and sells output in a competitive product market at P = $${productPrice}/unit. The ${ordCurr} worker has a Marginal Product (MP) of ${targetMP} units, while the ${ordNext} worker has an MP of ${Math.max(1, targetMP - 2)} units. How many workers should the firm hire to maximize profits?`,
       zh: `某企业在完全竞争的劳动力市场中雇工（市场工资为 $${wage}/人），其产品在完全竞争产品市场中以单价 P = $${productPrice} 售出。已知第 ${adjWorkers} 名工人的边际产量（MP）为 ${targetMP} 单位，而第 ${adjWorkers + 1} 名工人的 MP 降为 ${Math.max(1, targetMP - 2)} 单位。该企业应雇佣多少名工人才能实现利润最大化？`
     },
     options,

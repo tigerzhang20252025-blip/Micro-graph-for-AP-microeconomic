@@ -59,7 +59,7 @@ const presets: ScenarioPreset[] = [
       mpDiminishingRate: 1.2,
       laborSupplyBase: 10,
       laborSupplySlope: 1.5,
-      minWageRate: 37
+      minWageRate: 32
     }
   },
   {
@@ -318,6 +318,23 @@ export const factorMarketModel: EconomicModel = {
         label: { en: `Firm Optimum: MRP = W* (L* = ${lComp.toFixed(1)})`, zh: `厂商最优点：MRP = W* (L* = ${lComp.toFixed(1)})` },
         color: '#2563eb',
         showDropLines: true
+      });
+    }
+
+    if (bindingWage) {
+      points.push({
+        id: 'min-wage-outcome',
+        x: Number(lActual.toFixed(1)),
+        y: Number(wActual.toFixed(1)),
+        shortLabel: 'E_min',
+        label: {
+          en: `Minimum Wage Outcome (L=${lActual.toFixed(1)}, W=$${wActual.toFixed(1)})`,
+          zh: `最低工资雇佣均衡点（L=${lActual.toFixed(1)}, W=$${wActual.toFixed(1)}）`
+        },
+        color: '#9333ea',
+        showDropLines: true,
+        xLabel: `L=${lActual.toFixed(1)}`,
+        yLabel: `W=$${wActual.toFixed(1)}`
       });
     }
 

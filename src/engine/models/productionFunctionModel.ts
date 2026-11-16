@@ -246,7 +246,7 @@ export const productionFunctionModel: EconomicModel = {
         label: { en: `Current Labor (L = ${currentL})`, zh: `当前雇佣量（L = ${currentL}）` },
         shortLabel: `L=${currentL}`,
         x: currentL,
-        y: Math.max(0, currentMP),
+        y: Number(currentMP.toFixed(2)),
         color: '#4f46e5',
         showDropLines: true,
         xLabel: `L=${currentL}`,
@@ -276,6 +276,10 @@ export const productionFunctionModel: EconomicModel = {
       }
     ];
 
+    const yMaxMain = Math.ceil((28 * k) / 5) * 5;
+    const minMPAtEnd = mpFunc(lMax);
+    const yMinMain = Math.min(-10, -Math.ceil(Math.abs(minMPAtEnd) / 5) * 5);
+
     // Shaded areas for Stage I, II, III
     const shadedAreas: ShadedAreaSpec[] = [];
     if (params.showStages) {
@@ -289,8 +293,8 @@ export const productionFunctionModel: EconomicModel = {
         points: [
           { x: 9.0, y: 0 },
           { x: 12.0, y: 0 },
-          { x: 12.0, y: 30 * k },
-          { x: 9.0, y: 30 * k }
+          { x: 12.0, y: yMaxMain },
+          { x: 9.0, y: yMaxMain }
         ]
       });
     }
@@ -357,9 +361,9 @@ export const productionFunctionModel: EconomicModel = {
         xMin: 0,
         xMax: 15,
         xStep: 3,
-        yMin: -10,
-        yMax: Math.ceil((28 * k) / 5) * 5,
-        yStep: 5
+        yMin: yMinMain,
+        yMax: yMaxMain,
+        yStep: yMaxMain - yMinMain > 55 ? 10 : 5
       },
       curves,
       points,

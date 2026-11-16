@@ -164,12 +164,14 @@ export function generateGameTheoryPayoffQuestion(): PracticeQuestion {
 }
 
 /**
- * Natural Monopoly Regulation: Socially Optimal vs Fair-Return (Topic 4.4)
+ * Natural Monopoly Regulation: Socially Optimal vs Fair-Return (Topic 4.2)
  */
 export function generateNaturalMonopolyRegulationQuestion(): PracticeQuestion {
   const mc = randomChoice([10, 15, 20]);
   const pFair = mc + randomChoice([8, 12, 15]);
   const pMonopoly = pFair + randomChoice([15, 20]);
+  const atcMonopoly = pFair + Math.floor((pMonopoly - pFair) / 2);
+  const atcSocial = mc + Math.floor((pFair - mc) / 2);
 
   const qMonopoly = randomInt(20, 30);
   const qFair = qMonopoly + randomChoice([15, 20]);
@@ -233,13 +235,13 @@ export function generateNaturalMonopolyRegulationQuestion(): PracticeQuestion {
   return {
     id: `dyn-nat-monopoly-${Date.now()}-${randomInt(100, 999)}`,
     unit: 4,
-    topicCode: '4.4',
+    topicCode: '4.2',
     topicId: 'monopoly-single-price',
     isDynamic: true,
     templateId: 'dyn-natural-monopoly-regulation',
     prompt: {
-      en: `A regulated natural monopoly has cost curves: MC = $${mc}, and at different outputs ATC is: Q=${qMonopoly}: ATC=$${pMonopoly}; Q=${qFair}: ATC=$${pFair}; Q=${qSocial}: ATC=$${mc + 6}. Unregulated monopoly price is $${pMonopoly}. If the government implements "${isSocialQuestion ? 'Socially Optimal (Marginal Cost) Pricing' : 'Fair-Return (Average Cost) Pricing'}", what are the price, output, and regulatory implications?`,
-      zh: `某受政府监管的自然垄断企业成本曲线为：MC = $${mc}。在不同产出水平下其 ATC 分别为：Q=${qMonopoly} 时 ATC=$${pMonopoly}；Q=${qFair} 时 ATC=$${pFair}；Q=${qSocial} 时 ATC=$${mc + 6}。原无监管垄断市价为 $${pMonopoly}。若政府实施“${isSocialQuestion ? '社会最优定价管制（边际成本定价）' : '公平回报定价管制（平均成本定价）'}”，其管制价格、产量及政策经济后果是什么？`
+      en: `A regulated natural monopoly has a constant Marginal Cost of MC = $${mc}. At key output levels, consumer Demand willingness-to-pay (P) and Average Total Cost (ATC) are: Q=${qMonopoly}: P=$${pMonopoly}, ATC=$${atcMonopoly}; Q=${qFair}: P=$${pFair}, ATC=$${pFair}; Q=${qSocial}: P=$${mc}, ATC=$${atcSocial}. Unregulated monopoly price is $${pMonopoly} at Q=${qMonopoly}. If the government implements "${isSocialQuestion ? 'Socially Optimal (Marginal Cost) Pricing' : 'Fair-Return (Average Cost) Pricing'}", what are the price, output, and regulatory implications?`,
+      zh: `某受政府监管的自然垄断企业边际成本恒为 MC = $${mc}。在三个关键产出水平下，市场需求愿意支付的价格（P）与平均总成本（ATC）分别为：Q=${qMonopoly} 时 P=$${pMonopoly}、ATC=$${atcMonopoly}；Q=${qFair} 时 P=$${pFair}、ATC=$${pFair}；Q=${qSocial} 时 P=$${mc}、ATC=$${atcSocial}。原无监管垄断价格为 $${pMonopoly}（产量 Q=${qMonopoly}）。若政府实施“${isSocialQuestion ? '社会最优定价管制（边际成本定价）' : '公平回报定价管制（平均成本定价）'}”，其管制价格、产量及政策经济后果是什么？`
     },
     options,
     correctOptionId,
@@ -313,7 +315,7 @@ export function generateMonopolisticCompExcessCapacityQuestion(): PracticeQuesti
   return {
     id: `dyn-mono-comp-${Date.now()}-${randomInt(100, 999)}`,
     unit: 4,
-    topicCode: '4.3',
+    topicCode: '4.4',
     topicId: 'monopolistic-competition',
     isDynamic: true,
     templateId: 'dyn-monopolistic-competition-excess-capacity',
@@ -385,7 +387,7 @@ export function generatePriceDiscriminationEfficiencyQuestion(): PracticeQuestio
   return {
     id: `dyn-price-discrim-${Date.now()}-${randomInt(100, 999)}`,
     unit: 4,
-    topicCode: '4.2',
+    topicCode: '4.3',
     topicId: 'monopoly-price-discrimination',
     isDynamic: true,
     templateId: 'dyn-price-discrimination-efficiency',

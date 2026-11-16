@@ -335,7 +335,7 @@ export function generateCrossIncomeElasticityQuestion(): PracticeQuestion {
       }
     ];
     const pair = randomChoice(goodPairs);
-    const deltaPB = randomChoice([10, 15, 20]);
+    const deltaPB = randomChoice([10, 20]);
     // If substitute: +deltaPB causes +deltaQA; if complement: +deltaPB causes -deltaQA
     const xedCoeff = pair.relation === 'substitute' ? randomChoice([0.5, 0.8, 1.2, 1.5]) : -randomChoice([0.5, 0.8, 1.2, 1.5]);
     const deltaQA = Math.round(deltaPB * xedCoeff);
@@ -405,7 +405,7 @@ export function generateCrossIncomeElasticityQuestion(): PracticeQuestion {
     };
   } else {
     // Income Elasticity: YED = %ΔQ / %ΔIncome
-    const deltaI = randomChoice([5, 10, 15, 20]);
+    const deltaI = randomChoice([10, 20]);
     const isNormal = Math.random() > 0.4;
     const yed = isNormal ? randomChoice([0.5, 0.8, 1.2, 1.8]) : -randomChoice([0.4, 0.7, 1.2]);
     const deltaQ = Math.round(deltaI * yed);

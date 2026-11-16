@@ -157,6 +157,16 @@ export const lratcModel: EconomicModel = {
       }
     };
 
+    const evaluateLRATCSlope = (output: number): number => {
+      if (output < mes) {
+        return -0.076 * (mes - output);
+      } else if (output <= dis) {
+        return 0;
+      } else {
+        return 0.064 * (output - dis);
+      }
+    };
+
     const currentCost = evaluateLRATC(q);
 
     // Identify current phase
@@ -197,25 +207,33 @@ export const lratcModel: EconomicModel = {
       }
     ];
 
-    // Short-Run ATC curves for 4 discrete plant sizes
+    // Short-Run ATC curves for 4 plant sizes truly tangent to the LRATC envelope (SRATC >= LRATC everywhere)
     if (params.showSRATC) {
+      const q1 = Math.max(15, Math.round(mes - 16));
+      const q2 = Math.min(dis - 2, Math.round(mes + 5));
+      const q3 = Math.max(q2 + 4, Math.round(dis - 5));
+      const q4 = Math.min(100, Math.round(dis + 18));
+
       const plantSizes = [
-        { id: 'sratc-1', qOpt: 24, label: 'SRATC₁ (Small)', color: '#0284c7' },
-        { id: 'sratc-2', qOpt: 45, label: 'SRATC₂ (Medium)', color: '#059669' },
-        { id: 'sratc-3', qOpt: 70, label: 'SRATC₃ (Large)', color: '#d97706' },
-        { id: 'sratc-4', qOpt: 95, label: 'SRATC₄ (Huge)', color: '#dc2626' }
+        { id: 'sratc-1', qOpt: q1, label: 'SRATC₁ (Small)', color: '#0284c7' },
+        { id: 'sratc-2', qOpt: q2, label: 'SRATC₂ (Medium)', color: '#059669' },
+        { id: 'sratc-3', qOpt: q3, label: 'SRATC₃ (Large)', color: '#d97706' },
+        { id: 'sratc-4', qOpt: q4, label: 'SRATC₄ (Huge)', color: '#dc2626' }
       ];
 
       plantSizes.forEach((plant) => {
         const sratcPts: Point2D[] = [];
         const baseCost = evaluateLRATC(plant.qOpt);
-        const span = 22;
-        for (let i = 0; i <= 24; i++) {
-          const ptQ = plant.qOpt - span + (i / 24) * (2 * span);
+        const tangentSlope = evaluateLRATCSlope(plant.qOpt);
+        const span = 26;
+        const stepsSR = 36;
+        for (let i = 0; i <= stepsSR; i++) {
+          const ptQ = plant.qOpt - span + (i / stepsSR) * (2 * span);
           if (ptQ >= 10 && ptQ <= 115) {
-            // SRATC is steeper than LRATC envelope
-            const cVal = baseCost + 0.12 * Math.pow(ptQ - plant.qOpt, 2);
-            if (cVal <= 80) {
+            // Envelope tangency quadratic: curvature 0.12 > 0.038 guarantees SRATC(q) >= LRATC(q) globally
+            const dq = ptQ - plant.qOpt;
+            const cVal = baseCost + tangentSlope * dq + 0.12 * dq * dq;
+            if (cVal <= 82) {
               sratcPts.push({ x: Number(ptQ.toFixed(1)), y: Number(cVal.toFixed(2)) });
             }
           }

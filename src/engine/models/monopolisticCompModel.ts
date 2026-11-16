@@ -12,7 +12,7 @@ export interface MonopolisticCompParams {
 const defaultParams: MonopolisticCompParams = {
   demandIntercept: 90,
   demandSlope: 1.0,
-  fixedCost: 360,
+  fixedCost: 500,
   marginalCostSlope: 0.5,
   marketPhase: 'long_run_tangency'
 };
@@ -31,7 +31,7 @@ const presets: ScenarioPreset[] = [
     params: {
       demandIntercept: 90,
       demandSlope: 1.0,
-      fixedCost: 360,
+      fixedCost: 500,
       marginalCostSlope: 0.5,
       marketPhase: 'long_run_tangency'
     }
@@ -49,7 +49,7 @@ const presets: ScenarioPreset[] = [
     params: {
       demandIntercept: 110,
       demandSlope: 1.0,
-      fixedCost: 360,
+      fixedCost: 500,
       marginalCostSlope: 0.5,
       marketPhase: 'short_run_profit'
     }
@@ -67,7 +67,7 @@ const presets: ScenarioPreset[] = [
     params: {
       demandIntercept: 75,
       demandSlope: 1.0,
-      fixedCost: 360,
+      fixedCost: 500,
       marginalCostSlope: 0.5,
       marketPhase: 'short_run_loss'
     }
@@ -102,16 +102,16 @@ export const monopolisticCompModel: EconomicModel = {
       type: 'slider',
       id: 'demandIntercept',
       label: { en: 'Brand Demand Strength (Intercept)', zh: '品牌需求强度（需求截距）' },
-      min: 70,
-      max: 115,
+      min: 60,
+      max: 120,
       step: 1
     },
     {
       type: 'slider',
       id: 'fixedCost',
       label: { en: 'Fixed Overhead Costs (FC in $)', zh: '固定间接成本（FC，美元）' },
-      min: 250,
-      max: 500,
+      min: 300,
+      max: 700,
       step: 10,
       unit: '$'
     }
@@ -120,41 +120,38 @@ export const monopolisticCompModel: EconomicModel = {
   calculate(params: Record<string, any>): GraphCalculationOutput {
     let a = Number(params.demandIntercept) || 90;
     const b = Number(params.demandSlope) || 1.0;
-    const FC = Number(params.fixedCost) || 360;
+    const FC = Number(params.fixedCost) || 500;
     const mcSlope = Number(params.marginalCostSlope) || 0.5;
     const phase = params.marketPhase || 'long_run_tangency';
+    const mcIntercept = 40;
 
     if (phase === 'long_run_tangency') {
       const qTangent = Math.sqrt(FC / (b + 0.5 * mcSlope));
-      a = 10 + (2 * b + mcSlope) * qTangent;
-    } else if (phase === 'short_run_profit' && a <= 95) {
-      a = 110;
-    } else if (phase === 'short_run_loss' && a >= 85) {
-      a = 75;
+      a = mcIntercept + (2 * b + mcSlope) * qTangent;
     }
 
-    const qStar = (a - 10) / (2 * b + mcSlope);
+    const qStar = Math.max(0.5, (a - mcIntercept) / (2 * b + mcSlope));
     const pStar = a - b * qStar;
-    const mcStar = mcSlope * qStar + 10;
-    const atcStar = FC / qStar + 10 + 0.5 * mcSlope * qStar;
+    const mcStar = mcSlope * qStar + mcIntercept;
+    const atcStar = FC / qStar + mcIntercept + 0.5 * mcSlope * qStar;
     const profit = (pStar - atcStar) * qStar;
 
     // Socially optimal benchmark (P = MC / Allocative Efficiency)
-    const qSO = (a - 10) / (b + mcSlope);
+    const qSO = Math.max(0.5, (a - mcIntercept) / (b + mcSlope));
     const pSO = a - b * qSO;
 
     // Welfare Calculations
     const cs = Math.max(0, 0.5 * (a - pStar) * qStar);
     const dwl = Math.max(0, 0.5 * (pStar - mcStar) * (qSO - qStar));
-    const ps = Math.max(0, (pStar - 10 - 0.5 * mcSlope * qStar) * qStar);
+    const ps = Math.max(0, (pStar - mcIntercept - 0.5 * mcSlope * qStar) * qStar);
 
     const qMes = Math.sqrt((2 * FC) / mcSlope);
-    const minAtc = FC / qMes + 10 + 0.5 * mcSlope * qMes;
+    const minAtc = FC / qMes + mcIntercept + 0.5 * mcSlope * qMes;
 
     const excessCapacity = Math.max(0, qMes - qStar);
 
-    const xMax = 70;
-    const yMax = 120;
+    const xMax = 75;
+    const yMax = Math.max(120, Math.ceil((a + 5) / 10) * 10);
 
     const demandPoints = generateLinearPoints(
       { intercept: a, slope: -b },
@@ -175,7 +172,7 @@ export const monopolisticCompModel: EconomicModel = {
     );
 
     const mcPoints = generateLinearPoints(
-      { intercept: 10, slope: mcSlope },
+      { intercept: mcIntercept, slope: mcSlope },
       0,
       xMax,
       50,
@@ -185,8 +182,8 @@ export const monopolisticCompModel: EconomicModel = {
 
     const atcPoints: Point2D[] = [];
     for (let q = 4; q <= xMax; q += 1) {
-      const atcVal = FC / q + 10 + 0.5 * mcSlope * q;
-      if (Number.isFinite(atcVal) && atcVal >= 0) {
+      const atcVal = FC / q + mcIntercept + 0.5 * mcSlope * q;
+      if (atcVal <= yMax + 20) {
         atcPoints.push({ x: Number(q.toFixed(1)), y: Number(atcVal.toFixed(2)) });
       }
     }
@@ -221,7 +218,7 @@ export const monopolisticCompModel: EconomicModel = {
         color: '#dc2626',
         strokeWidth: 3,
         visible: true,
-        equation: `MC = 10 + ${mcSlope.toFixed(2)}Q`
+        equation: `MC = ${mcIntercept} + ${mcSlope.toFixed(2)}Q`
       },
       {
         id: 'atc',
@@ -231,7 +228,7 @@ export const monopolisticCompModel: EconomicModel = {
         color: '#d97706',
         strokeWidth: 2.5,
         visible: true,
-        equation: `ATC = ${FC}/Q + 10 + ${(0.5 * mcSlope).toFixed(2)}Q`
+        equation: `ATC = ${FC}/Q + ${mcIntercept} + ${(0.5 * mcSlope).toFixed(2)}Q`
       },
       {
         id: 'mes-ref',

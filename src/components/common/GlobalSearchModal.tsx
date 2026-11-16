@@ -25,7 +25,7 @@ const POPULAR_ACRONYMS = ['MC', 'ATC', 'DWL', 'PED', 'Mr. DARP', 'MRP', 'MSC', '
 
 export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
   const { language, tr } = useLanguage();
-  const { navigateToGraph, setCurrentView } = useAppState();
+  const { navigateToTopic, setCurrentView } = useAppState();
 
   const [query, setQuery] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(undefined);
@@ -76,9 +76,9 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
     setActiveTermId(term.id);
   };
 
-  const handleNavigateToGraph = (modelId: string) => {
+  const handleNavigateToGraph = (topicOrModelId: string) => {
     onClose();
-    navigateToGraph(modelId);
+    navigateToTopic(topicOrModelId);
   };
 
   const handleViewInReference = () => {
@@ -89,7 +89,10 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
   const isZh = language === 'zh';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 sm:pt-16 p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-10 sm:pt-16 p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150"
+    >
       <div
         className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}

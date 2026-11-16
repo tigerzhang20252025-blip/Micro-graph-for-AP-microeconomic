@@ -130,7 +130,7 @@ export const TopicCard: React.FC<TopicCardProps> = ({ topic }) => {
           </button>
         ) : (
           <span className="text-[11px] text-slate-400 italic ml-auto">
-            {t.statusPlanned}
+            {topic.status === 'reference' ? t.statusReference : t.statusPlanned}
           </span>
         )}
       </div>

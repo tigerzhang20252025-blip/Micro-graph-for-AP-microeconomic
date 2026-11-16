@@ -41,7 +41,7 @@ const CATEGORIES = [
 
 export const ReferenceMode: React.FC = () => {
   const { language, t, tr } = useLanguage();
-  const { navigateToGraph } = useAppState();
+  const { navigateToTopic } = useAppState();
   const [activeTab, setActiveTab] = useState<'glossary' | 'rules' | 'mistakes' | 'framework'>('glossary');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(undefined);
@@ -432,7 +432,7 @@ export const ReferenceMode: React.FC = () => {
                     {term.linkedModelId && (
                       <div className="pt-3 border-t border-slate-100">
                         <button
-                          onClick={() => navigateToGraph(term.linkedModelId!)}
+                          onClick={() => navigateToTopic(term.linkedModelId!)}
                           className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white font-bold text-xs transition-all active:scale-95 group/btn"
                         >
                           <ExternalLink className="w-3.5 h-3.5 text-blue-600 group-hover/btn:text-white transition-colors" />
@@ -451,13 +451,13 @@ export const ReferenceMode: React.FC = () => {
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-700">
-                    <th className="py-2.5 px-3 font-semibold">AP Abbr.</th>
-                    <th className="py-2.5 px-3 font-semibold">English Term</th>
-                    <th className="py-2.5 px-3 font-semibold">中文术语</th>
-                    <th className="py-2.5 px-3 font-semibold">Unit</th>
-                    <th className="py-2.5 px-3 font-semibold">Formula / Rule</th>
-                    <th className="py-2.5 px-3 font-semibold">Definition</th>
-                    <th className="py-2.5 px-3 font-semibold text-right">Action</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? 'AP 缩写' : 'AP Abbr.'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '英文术语' : 'English Term'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '中文术语' : 'Chinese Term'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '单元' : 'Unit'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '公式 / 法则' : 'Formula / Rule'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '定义与辨析' : 'Definition'}</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">{isZh ? '操作' : 'Action'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -473,7 +473,7 @@ export const ReferenceMode: React.FC = () => {
                         {term.zh}
                       </td>
                       <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                        Unit {term.unit}
+                        {isZh ? `第 ${term.unit} 单元` : `Unit ${term.unit}`}
                       </td>
                       <td className="py-2.5 px-3 font-mono text-[11px] text-emerald-700 max-w-xs truncate">
                         {term.formula || '—'}
@@ -498,10 +498,10 @@ export const ReferenceMode: React.FC = () => {
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {term.linkedModelId ? (
                           <button
-                            onClick={() => navigateToGraph(term.linkedModelId!)}
+                            onClick={() => navigateToTopic(term.linkedModelId!)}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white font-semibold text-[11px] transition-colors"
                           >
-                            <span>Graph</span>
+                            <span>{isZh ? '看图' : 'Graph'}</span>
                             <ArrowRight className="w-3 h-3" />
                           </button>
                         ) : (
@@ -562,7 +562,7 @@ export const ReferenceMode: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600" />
-              <span>Core AP Microeconomic Formulas</span>
+              <span>{t.coreFormulasHeader}</span>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -635,24 +635,24 @@ export const ReferenceMode: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-600" />
-              <span>AP Microeconomics 6 Units & Official Exam Weights</span>
+              <span>{t.frameworkTableHeader}</span>
             </h2>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-700">
-                    <th className="py-2.5 px-3 font-semibold">Unit</th>
-                    <th className="py-2.5 px-3 font-semibold">Title (English / 中文)</th>
-                    <th className="py-2.5 px-3 font-semibold">Exam Weight</th>
-                    <th className="py-2.5 px-3 font-semibold">Core Graphical Models</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '单元' : 'Unit'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '单元标题（英 / 中）' : 'Title (English / 中文)'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '考纲权重' : 'Exam Weight'}</th>
+                    <th className="py-2.5 px-3 font-semibold">{isZh ? '核心模型与内容' : 'Core Graphical Models'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   {AP_UNITS.map((u) => (
                     <tr key={u.unit} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
-                        Unit {u.unit}
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap">
+                        {isZh ? `第 ${u.unit} 单元` : `Unit ${u.unit}`}
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="font-semibold text-slate-800">{u.title.en}</div>
@@ -679,7 +679,7 @@ export const ReferenceMode: React.FC = () => {
                 <span>{t.scopeCore}</span>
               </div>
               <p className="text-xs text-emerald-900/90 leading-relaxed font-sans">
-                Strictly tested on College Board AP Microeconomics multiple-choice (MCQ) and free-response (FRQ) exams. Fully modeled in our graph engine.
+                {t.scopeCoreDesc}
               </p>
             </div>
 
@@ -689,7 +689,7 @@ export const ReferenceMode: React.FC = () => {
                 <span>{t.scopeExtension}</span>
               </div>
               <p className="text-xs text-amber-900/90 leading-relaxed font-sans">
-                Advanced microeconomic topics (e.g. Indifference Curves, Cournot Duopoly) frequently taught in honors or introductory college microeconomics courses.
+                {t.scopeExtensionDesc}
               </p>
             </div>
 
@@ -699,7 +699,7 @@ export const ReferenceMode: React.FC = () => {
                 <span>{t.scopeExcluded}</span>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed font-sans">
-                Historical concepts removed by College Board (e.g. Kinked Demand Curve) or models exclusive to AP Macroeconomics (e.g. Phillips Curve, AD-AS).
+                {t.scopeExcludedDesc}
               </p>
             </div>
           </div>
@@ -707,8 +707,12 @@ export const ReferenceMode: React.FC = () => {
           {/* Official College Board Links */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="space-y-0.5">
-              <span className="font-bold text-slate-800">College Board AP Central Official CED Resource</span>
-              <p className="text-slate-500 text-[11px]">Official Course and Exam Description reference portal</p>
+              <span className="font-bold text-slate-800">
+                {isZh ? 'College Board 官方 AP 考纲资源门户' : 'College Board AP Central Official CED Resource'}
+              </span>
+              <p className="text-slate-500 text-[11px]">
+                {isZh ? '官方课程与考试说明（CED）权威参考主页' : 'Official Course and Exam Description reference portal'}
+              </p>
             </div>
             <a
               href="https://apcentral.collegeboard.org/courses/ap-microeconomics"
@@ -716,7 +720,7 @@ export const ReferenceMode: React.FC = () => {
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors"
             >
-              <span>AP Central Microeconomics</span>
+              <span>{isZh ? 'AP 微观官方主页' : 'AP Central Microeconomics'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>

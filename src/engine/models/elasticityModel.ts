@@ -144,6 +144,22 @@ export const elasticityModel: EconomicModel = {
       ]
     },
     {
+      type: 'slider',
+      id: 'crossPricePercentage',
+      label: {
+        en: 'Related Good Y Price Change (%ΔPy)',
+        zh: '相关商品 Y 价格变动百分比（%ΔPy）'
+      },
+      min: -20,
+      max: 20,
+      step: 5,
+      unit: '%',
+      help: {
+        en: 'Simulates % change in Good Y price to compute %ΔQd of Good X via XED.',
+        zh: '模拟相关商品 Y 价格变化百分比，结合 XED 计算对当前商品需求量的冲击幅度。'
+      }
+    },
+    {
       type: 'select',
       id: 'incomeGoodType',
       label: {
@@ -155,6 +171,22 @@ export const elasticityModel: EconomicModel = {
         { id: 'normal_necessity', label: { en: 'Normal Necessity (0 < YED ≤ 1)', zh: '正常必需品（0 < YED ≤ 1）' } },
         { id: 'inferior', label: { en: 'Inferior Good (YED < 0)', zh: '劣等品（YED < 0）' } }
       ]
+    },
+    {
+      type: 'slider',
+      id: 'incomePercentage',
+      label: {
+        en: 'Consumer Income Change (%ΔIncome)',
+        zh: '消费者收入变动百分比（%ΔIncome）'
+      },
+      min: -20,
+      max: 20,
+      step: 5,
+      unit: '%',
+      help: {
+        en: 'Simulates % change in consumer income to compute resulting %ΔQd via YED.',
+        zh: '模拟消费者收入增减百分比，结合 YED 计算需求量变动百分比。'
+      }
     }
   ],
   calculate(rawParams: Record<string, any>): GraphCalculationOutput {
@@ -172,7 +204,7 @@ export const elasticityModel: EconomicModel = {
 
     // Point PED: | (dQ/dP) * (P/Q) | = (1/b) * (currentP / currentQ)
     const ped = currentQ > 0 ? (currentP / (b * currentQ)) : 99;
-    const elasticityCategory = ped > 1.05 ? 'elastic' : ped < 0.95 ? 'inelastic' : 'unit';
+    const elasticityCategory = Math.abs(ped - 1) <= 1e-3 ? 'unit' : ped > 1 ? 'elastic' : 'inelastic';
 
     // Total Revenue Test direction:
     // If elastic: P down -> TR up; P up -> TR down
@@ -341,8 +373,13 @@ export const elasticityModel: EconomicModel = {
     };
 
     // Custom Interactive Elasticity Table
-    const xedValue = params.crossGoodType === 'substitute' ? '+1.45' : params.crossGoodType === 'complement' ? '-1.20' : '0.00';
-    const yedValue = params.incomeGoodType === 'normal_luxury' ? '+2.10' : params.incomeGoodType === 'normal_necessity' ? '+0.65' : '-0.85';
+    const xedNum = params.crossGoodType === 'substitute' ? 1.45 : params.crossGoodType === 'complement' ? -1.2 : 0;
+    const yedNum = params.incomeGoodType === 'normal_luxury' ? 2.1 : params.incomeGoodType === 'normal_necessity' ? 0.65 : -0.85;
+    const xedValue = xedNum > 0 ? `+${xedNum.toFixed(2)}` : xedNum.toFixed(2);
+    const yedValue = yedNum > 0 ? `+${yedNum.toFixed(2)}` : yedNum.toFixed(2);
+    const crossDeltaQ = xedNum * params.crossPricePercentage;
+    const incomeDeltaQ = yedNum * params.incomePercentage;
+    const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
     const customTable = {
       title: { en: 'AP Microeconomics Elasticities Summary Matrix', zh: 'AP 微观经济学核心弹性测试对照表' },
@@ -371,7 +408,7 @@ export const elasticityModel: EconomicModel = {
           id: 'xed-row',
           label: { en: 'Cross-Price Elasticity (XED)', zh: '交叉价格弹性（XED）' },
           values: [
-            `(%ΔQ_A) / (%ΔP_B) = ${xedValue}`,
+            `XED = ${xedValue} (${fmtPct(crossDeltaQ)} Q_x / ${fmtPct(params.crossPricePercentage)} P_y)`,
             {
               en: params.crossGoodType === 'substitute' ? 'Substitutes (XED > 0)' : params.crossGoodType === 'complement' ? 'Complements (XED < 0)' : 'Unrelated (XED = 0)',
               zh: params.crossGoodType === 'substitute' ? '替代品（XED > 0）' : params.crossGoodType === 'complement' ? '互补品（XED < 0）' : '无关品（XED = 0）'
@@ -386,7 +423,7 @@ export const elasticityModel: EconomicModel = {
           id: 'yed-row',
           label: { en: 'Income Elasticity of Demand (YED)', zh: '收入弹性（YED）' },
           values: [
-            `(%ΔQ) / (%ΔIncome) = ${yedValue}`,
+            `YED = ${yedValue} (${fmtPct(incomeDeltaQ)} Q / ${fmtPct(params.incomePercentage)} Inc)`,
             {
               en: params.incomeGoodType === 'normal_luxury' ? 'Normal Luxury (YED > 1)' : params.incomeGoodType === 'normal_necessity' ? 'Normal Necessity (0 < YED ≤ 1)' : 'Inferior Good (YED < 0)',
               zh: params.incomeGoodType === 'normal_luxury' ? '正常奢侈品（YED > 1）' : params.incomeGoodType === 'normal_necessity' ? '正常必需品（0 < YED ≤ 1）' : '劣等品（YED < 0）'

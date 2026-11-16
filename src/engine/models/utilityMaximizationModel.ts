@@ -152,7 +152,7 @@ export const utilityMaximizationModel: EconomicModel = {
     const muPerDollarY = muYStar / py;
 
     const xMax = 12;
-    const yMax = 20;
+    const yMax = Math.max(20, Math.ceil(Math.max(48 / px, 64 / py) / 5) * 5);
 
     const muPxPoints = generateLinearPoints(
       { intercept: 48 / px, slope: -4 / px },
@@ -160,7 +160,7 @@ export const utilityMaximizationModel: EconomicModel = {
       11,
       40,
       0,
-      Number.POSITIVE_INFINITY
+      yMax
     );
 
     const muPyPoints = generateLinearPoints(
@@ -169,7 +169,7 @@ export const utilityMaximizationModel: EconomicModel = {
       7.5,
       40,
       0,
-      Number.POSITIVE_INFINITY
+      yMax
     );
 
     const curves: CurveSpec[] = [
@@ -230,7 +230,8 @@ export const utilityMaximizationModel: EconomicModel = {
     ];
 
     const tableRows: CustomTableRow[] = [];
-    for (let q = 1; q <= 6; q++) {
+    const maxRowQ = Math.max(6, bestQx, bestQy);
+    for (let q = 1; q <= maxRowQ; q++) {
       const mx = Math.max(0, 48 - 4 * q);
       const mxPer = mx / px;
       const my = Math.max(0, 64 - 8 * q);
@@ -331,7 +332,7 @@ export const utilityMaximizationModel: EconomicModel = {
         yMin: 0,
         yMax,
         xStep: 2,
-        yStep: 4,
+        yStep: yMax > 24 ? 5 : 4,
         xSuffix: ' u',
         yPrefix: ''
       },

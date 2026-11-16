@@ -42,7 +42,7 @@ export function generateProductionStagesQuestion(): PracticeQuestion {
     },
     [
       {
-        text: { en: 'Stage I (where MP cuts AP at max AP)', zh: '第一阶段（MP 与 AP 在 AP 最低点相交）' },
+        text: { en: 'Stage I (where MP cuts AP at the minimum point of AP)', zh: '第一阶段（MP 与 AP 在 AP 最低点相交）' },
         explanation: {
           en: 'Incorrect. MP intersects AP at AP\'s MAXIMUM point, not minimum point.',
           zh: '错误。MP 穿过的是 AP 的极大值点（最高点），而非最低点。'
@@ -73,8 +73,8 @@ export function generateProductionStagesQuestion(): PracticeQuestion {
     isDynamic: true,
     templateId: 'dyn-production-stages',
     prompt: {
-      en: `A manufacturing plant employs ${sc.lVal} workers. If diminishing marginal returns set in when MP begins falling, and MP crosses AP at L = 9, in which stage of production is the firm operating at L = ${sc.lVal}?`,
-      zh: `某制造厂当前雇佣了 ${sc.lVal} 名工人。已知边际产量 MP 在其最高点之后开始递减，并在 L = 9 处穿过平均产量 AP 的最高点。当 L = ${sc.lVal} 时，该企业处于哪一个生产阶段？`
+      en: `A manufacturing plant employs ${sc.lVal} workers. If diminishing marginal returns set in when MP begins falling, MP crosses AP's maximum at L = 9, and Total Product reaches its peak where MP = 0 at L = 12, in which stage of production is the firm operating at L = ${sc.lVal}?`,
+      zh: `某制造厂当前雇佣了 ${sc.lVal} 名工人。已知边际产量 MP 在其最高点之后开始递减，在 L = 9 处穿过平均产量 AP 的最高点，并在 L = 12 处降至 0（此时总产量 TP 达到极大值）。当 L = ${sc.lVal} 时，该企业处于哪一个生产阶段？`
     },
     options,
     correctOptionId,
@@ -368,40 +368,55 @@ export function generateLratcScaleQuestion(): PracticeQuestion {
  * Discrete Cost Schedule Table Calculations (MC, ATC, AVC, TFC) (Topic 3.2)
  */
 export function generateDiscreteCostScheduleQuestion(): PracticeQuestion {
-  const tfc = randomChoice([30, 40, 50, 60]);
-  const mc1 = randomChoice([10, 15, 20]);
-  const mc2 = mc1 - randomChoice([2, 4]); // diminishing returns starts after unit 2
-  const mc3 = mc2 + randomChoice([5, 8]);
-  const mc4 = mc3 + randomChoice([8, 12]);
-
-  const tc0 = tfc;
-  const tc1 = tc0 + mc1;
-  const tc2 = tc1 + mc2;
-  const tc3 = tc2 + mc3;
-  const tc4 = tc3 + mc4;
-
-  const targetQ = randomChoice([2, 3, 4]);
+  let tfc = 0;
+  let mc1 = 0;
+  let mc2 = 0;
+  let mc3 = 0;
+  let mc4 = 0;
+  let tc0 = 0;
+  let tc1 = 0;
+  let tc2 = 0;
+  let tc3 = 0;
+  let tc4 = 0;
+  let targetQ = 2;
   let targetMC = 0;
   let targetATC = 0;
   let prevTC = 0;
   let currTC = 0;
 
-  if (targetQ === 2) {
-    targetMC = mc2;
-    currTC = tc2;
-    prevTC = tc1;
-    targetATC = Number((tc2 / 2).toFixed(1));
-  } else if (targetQ === 3) {
-    targetMC = mc3;
-    currTC = tc3;
-    prevTC = tc2;
-    targetATC = Number((tc3 / 3).toFixed(1));
-  } else {
-    targetMC = mc4;
-    currTC = tc4;
-    prevTC = tc3;
-    targetATC = Number((tc4 / 4).toFixed(1));
-  }
+  do {
+    tfc = randomChoice([30, 40, 50, 60]);
+    mc1 = randomChoice([10, 15, 20]);
+    mc2 = mc1 - randomChoice([2, 4]); // diminishing returns starts after unit 2
+    mc3 = mc2 + randomChoice([5, 8]);
+    mc4 = mc3 + randomChoice([8, 12]);
+
+    tc0 = tfc;
+    tc1 = tc0 + mc1;
+    tc2 = tc1 + mc2;
+    tc3 = tc2 + mc3;
+    tc4 = tc3 + mc4;
+
+    targetQ = randomChoice([2, 3, 4]);
+    if (targetQ === 2) {
+      targetMC = mc2;
+      currTC = tc2;
+      prevTC = tc1;
+      targetATC = Number((tc2 / 2).toFixed(1));
+    } else if (targetQ === 3) {
+      targetMC = mc3;
+      currTC = tc3;
+      prevTC = tc2;
+      targetATC = Number((tc3 / 3).toFixed(1));
+    } else {
+      targetMC = mc4;
+      currTC = tc4;
+      prevTC = tc3;
+      targetATC = Number((tc4 / 4).toFixed(1));
+    }
+  } while (targetMC === targetATC || targetATC === tfc);
+
+  const ordinalQ = targetQ === 2 ? '2nd' : targetQ === 3 ? '3rd' : `${targetQ}th`;
 
   const { options, correctOptionId } = buildFourOptions(
     {
@@ -456,7 +471,7 @@ export function generateDiscreteCostScheduleQuestion(): PracticeQuestion {
     isDynamic: true,
     templateId: 'dyn-discrete-cost-schedule',
     prompt: {
-      en: `A firm's short-run cost schedule is: Q=0: TC=$${tc0}; Q=1: TC=$${tc1}; Q=2: TC=$${tc2}; Q=3: TC=$${tc3}; Q=4: TC=$${tc4}. What is the Marginal Cost (MC) and Average Total Cost (ATC) of producing the ${targetQ}th unit?`,
+      en: `A firm's short-run cost schedule is: Q=0: TC=$${tc0}; Q=1: TC=$${tc1}; Q=2: TC=$${tc2}; Q=3: TC=$${tc3}; Q=4: TC=$${tc4}. What is the Marginal Cost (MC) and Average Total Cost (ATC) of producing the ${ordinalQ} unit?`,
       zh: `某企业的短期总成本序列为：Q=0: TC=$${tc0}；Q=1: TC=$${tc1}；Q=2: TC=$${tc2}；Q=3: TC=$${tc3}；Q=4: TC=$${tc4}。求生产第 ${targetQ} 个单位产品时的边际成本（MC）以及该产量下的平均总成本（ATC）：`
     },
     options,

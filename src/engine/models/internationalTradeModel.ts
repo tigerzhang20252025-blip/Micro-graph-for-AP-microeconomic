@@ -100,7 +100,7 @@ export const internationalTradeModel: EconomicModel = {
         zh: '进口从量关税（$/单位）'
       },
       min: 0,
-      max: 25,
+      max: 35,
       step: 1,
       unit: '$',
       help: {
@@ -300,7 +300,7 @@ export const internationalTradeModel: EconomicModel = {
       }
     ];
 
-    if (effectiveTariff > 0 && imports > 0) {
+    if (params.tradePolicy === 'tariff' && effectiveTariff > 0 && imports > 0) {
       // Tariff Revenue Box: from qSuppliedDomestic to qDemandedDomestic between pw and domesticPrice
       shadedAreas.push({
         id: 'tariffRevArea',
@@ -318,7 +318,9 @@ export const internationalTradeModel: EconomicModel = {
         valuePrefix: '$',
         visible: true
       });
+    }
 
+    if (effectiveTariff > 0) {
       // DWL 1: Production Inefficiency Triangle
       if (dwlProduction > 0.5) {
         shadedAreas.push({

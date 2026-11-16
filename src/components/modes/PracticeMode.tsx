@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
 import { PRACTICE_QUESTIONS, PracticeQuestion } from '../../data/practiceQuestions';
@@ -29,9 +29,15 @@ import {
 
 type PracticeTab = 'infinite' | 'mock' | 'mistakes' | 'classic';
 
+const MOCK_DURATION_SECONDS: Record<number, number> = {
+  15: 18 * 60,
+  30: 35 * 60,
+  60: 70 * 60
+};
+
 export const PracticeMode: React.FC = () => {
   const { language, t, tr } = useLanguage();
-  const { navigateToGraph } = useAppState();
+  const { navigateToTopic } = useAppState();
 
   const [activeTab, setActiveTab] = useState<PracticeTab>('infinite');
   const [selectedUnit, setSelectedUnit] = useState<number>(0); // 0 = all units
@@ -82,13 +88,15 @@ export const PracticeMode: React.FC = () => {
   const [mockExam, setMockExam] = useState<MockExamState>({
     isActive: false,
     totalQuestions: 15,
-    timeRemainingSeconds: 20 * 60,
+    timeRemainingSeconds: MOCK_DURATION_SECONDS[15],
     questions: [],
     userAnswers: {},
     submitted: false
   });
   const [activeMockIndex, setActiveMockIndex] = useState<number>(0);
   const [selectedExamLength, setSelectedExamLength] = useState<number>(15);
+  const [mockReviewFilter, setMockReviewFilter] = useState<'all' | 'incorrect'>('all');
+  const loggedExamRef = useRef<boolean>(false);
 
   // Countdown timer for Mock Exam
   useEffect(() => {
@@ -106,6 +114,35 @@ export const PracticeMode: React.FC = () => {
 
     return () => clearInterval(timer);
   }, [mockExam.isActive, mockExam.submitted]);
+
+  // Log missed Mock Exam questions into Mistake Notebook once upon submission
+  useEffect(() => {
+    if (!mockExam.isActive || !mockExam.submitted || loggedExamRef.current) return;
+    loggedExamRef.current = true;
+
+    const missedRecords: MistakeRecord[] = mockExam.questions
+      .filter((q) => mockExam.userAnswers[q.id] !== q.correctOptionId)
+      .map((q) => ({
+        questionId: q.id,
+        templateId: q.templateId || 'dyn-ppc-opp-cost',
+        unit: q.unit,
+        topicCode: q.topicCode,
+        topicId: q.topicId,
+        prompt: q.prompt,
+        userWrongOptionId: mockExam.userAnswers[q.id] || 'SKIPPED',
+        correctOptionId: q.correctOptionId,
+        explanation: q.overallExplanation,
+        timestamp: Date.now(),
+        consecutiveCorrect: 0
+      }));
+
+    if (missedRecords.length > 0) {
+      setMistakes((prev) => {
+        const missedIds = new Set(missedRecords.map((m) => m.questionId));
+        return [...missedRecords, ...prev.filter((m) => !missedIds.has(m.questionId))];
+      });
+    }
+  }, [mockExam.isActive, mockExam.submitted, mockExam.questions, mockExam.userAnswers]);
 
   // -------------------------------------------------------------
   // 4. Classic Curated Questions State (with Dynamic Variant Generation)
@@ -168,7 +205,7 @@ export const PracticeMode: React.FC = () => {
         timestamp: Date.now(),
         consecutiveCorrect: 0
       };
-      setMistakes((prev) => [newMistake, ...prev.filter((m) => m.templateId !== dynamicQuestion.templateId)]);
+      setMistakes((prev) => [newMistake, ...prev.filter((m) => m.questionId !== dynamicQuestion.id)]);
     }
   };
 
@@ -177,8 +214,9 @@ export const PracticeMode: React.FC = () => {
   // -------------------------------------------------------------
   const handleStartMockExam = (length: number) => {
     const questions = generateMockExamQuestions(length);
-    // Allocate ~1.2 minutes per question (official AP pace)
-    const totalSeconds = length * 75;
+    const totalSeconds = MOCK_DURATION_SECONDS[length] ?? length * 70;
+    loggedExamRef.current = false;
+    setMockReviewFilter('all');
 
     setMockExam({
       isActive: true,
@@ -268,6 +306,15 @@ export const PracticeMode: React.FC = () => {
           })
           .filter((m) => m.consecutiveCorrect < 2)
       );
+    } else {
+      setMistakes((prev) =>
+        prev.map((m) => {
+          if (m.questionId === activeDrillMistake.originalRecord.questionId) {
+            return { ...m, consecutiveCorrect: 0, timestamp: Date.now() };
+          }
+          return m;
+        })
+      );
     }
   };
 
@@ -288,7 +335,7 @@ export const PracticeMode: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold backdrop-blur-sm">
               <BrainCircuit className="w-4 h-4 text-blue-400" />
-              <span>AP Microeconomics Practice Hub</span>
+              <span>{language === 'zh' ? 'AP 微观经济学刷题中心' : 'AP Microeconomics Practice Hub'}</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -426,7 +473,7 @@ export const PracticeMode: React.FC = () => {
               </div>
 
               <button
-                onClick={() => navigateToGraph(dynamicQuestion.topicId)}
+                onClick={() => navigateToTopic(dynamicQuestion.topicId)}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
               >
                 <span>{language === 'zh' ? '在交互模型中模拟此题' : 'Simulate in Graph Lab'}</span>
@@ -496,7 +543,14 @@ export const PracticeMode: React.FC = () => {
                             }`}
                           >
                             <span className="font-bold mr-1">
-                              {isOptionCorrect ? '✓ [正确依据]' : '✗ [辨析与错因]'}:
+                              {language === 'zh'
+                                ? isOptionCorrect
+                                  ? '✓ [正确依据]'
+                                  : '✗ [辨析与错因]'
+                                : isOptionCorrect
+                                ? '✓ [Correct Reasoning]'
+                                : '✗ [Distractor Analysis]'}
+                              :
                             </span>
                             {tr(opt.explanation)}
                           </div>
@@ -600,9 +654,9 @@ export const PracticeMode: React.FC = () => {
               {/* Length selector */}
               <div className="flex justify-center gap-3">
                 {[
-                  { count: 15, time: '18 min', label: language === 'zh' ? '15 题 · 快速小测' : '15 Qs · Quick Check' },
-                  { count: 30, time: '35 min', label: language === 'zh' ? '30 题 · 半套模考' : '30 Qs · Half Exam' },
-                  { count: 60, time: '70 min', label: language === 'zh' ? '60 题 · 全真大考' : '60 Qs · Full Exam' }
+                  { count: 15, time: language === 'zh' ? '18 分钟' : '18 min', label: language === 'zh' ? '15 题 · 快速小测' : '15 Qs · Quick Check' },
+                  { count: 30, time: language === 'zh' ? '35 分钟' : '35 min', label: language === 'zh' ? '30 题 · 半套模考' : '30 Qs · Half Exam' },
+                  { count: 60, time: language === 'zh' ? '70 分钟' : '70 min', label: language === 'zh' ? '60 题 · 全真大考' : '60 Qs · Full Exam' }
                 ].map((item) => (
                   <button
                     key={item.count}
@@ -689,8 +743,9 @@ export const PracticeMode: React.FC = () => {
                 <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-6">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <span className="text-xs font-bold text-indigo-600">
-                      Question {activeMockIndex + 1} of {mockExam.totalQuestions} · Unit{' '}
-                      {mockExam.questions[activeMockIndex].unit}
+                      {language === 'zh'
+                        ? `第 ${activeMockIndex + 1} / ${mockExam.totalQuestions} 题 · 第 ${mockExam.questions[activeMockIndex].unit} 单元 (${mockExam.questions[activeMockIndex].topicCode})`
+                        : `Question ${activeMockIndex + 1} of ${mockExam.totalQuestions} · Unit ${mockExam.questions[activeMockIndex].unit} (${mockExam.questions[activeMockIndex].topicCode})`}
                     </span>
                   </div>
 
@@ -840,6 +895,134 @@ export const PracticeMode: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Question-by-Question Review */}
+                <div className="pt-6 border-t border-slate-100 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="font-bold text-sm text-slate-800">
+                      {language === 'zh' ? '逐题答案复盘与解析' : 'Question-by-Question Answer Review'}
+                    </h3>
+                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                      <button
+                        onClick={() => setMockReviewFilter('all')}
+                        className={`px-3 py-1 rounded-lg transition-colors ${
+                          mockReviewFilter === 'all'
+                            ? 'bg-white text-indigo-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {language === 'zh' ? `全部 (${mockExam.questions.length})` : `All (${mockExam.questions.length})`}
+                      </button>
+                      <button
+                        onClick={() => setMockReviewFilter('incorrect')}
+                        className={`px-3 py-1 rounded-lg transition-colors ${
+                          mockReviewFilter === 'incorrect'
+                            ? 'bg-white text-rose-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {language === 'zh'
+                          ? `错题 / 未答 (${mockExam.questions.filter((q) => mockExam.userAnswers[q.id] !== q.correctOptionId).length})`
+                          : `Missed (${mockExam.questions.filter((q) => mockExam.userAnswers[q.id] !== q.correctOptionId).length})`}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
+                    {mockExam.questions
+                      .map((q, idx) => ({ q, idx }))
+                      .filter(({ q }) =>
+                        mockReviewFilter === 'all' ? true : mockExam.userAnswers[q.id] !== q.correctOptionId
+                      )
+                      .map(({ q, idx }) => {
+                        const userAns = mockExam.userAnswers[q.id];
+                        const isQCorrect = userAns === q.correctOptionId;
+                        const userOpt = q.options.find((o) => o.id === userAns);
+                        const correctOpt = q.options.find((o) => o.id === q.correctOptionId);
+
+                        return (
+                          <div
+                            key={q.id}
+                            className={`p-4 rounded-2xl border space-y-2.5 text-xs ${
+                              isQCorrect
+                                ? 'bg-emerald-50/40 border-emerald-200/80'
+                                : 'bg-rose-50/40 border-rose-200/80'
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-bold ${
+                                    isQCorrect
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}
+                                >
+                                  {isQCorrect
+                                    ? language === 'zh'
+                                      ? '✓ 正确'
+                                      : '✓ Correct'
+                                    : userAns
+                                    ? language === 'zh'
+                                      ? '✗ 答错'
+                                      : '✗ Incorrect'
+                                    : language === 'zh'
+                                    ? '— 未作答'
+                                    : '— Skipped'}
+                                </span>
+                                <span className="font-mono font-semibold text-slate-600">
+                                  #{idx + 1} · Unit {q.unit} ({q.topicCode})
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => navigateToTopic(q.topicId)}
+                                className="inline-flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                              >
+                                <span>{language === 'zh' ? '在图像中复习' : 'Graph Lab'}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <p className="text-sm font-medium text-slate-900 leading-relaxed">
+                              {tr(q.prompt)}
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="p-2.5 rounded-xl bg-white border border-slate-200/80">
+                                <span className="font-bold text-slate-500 block mb-0.5">
+                                  {language === 'zh' ? '你的选择' : 'Your Answer'}:{' '}
+                                  <span className={isQCorrect ? 'text-emerald-700' : 'text-rose-700'}>
+                                    {userAns || (language === 'zh' ? '未作答' : 'None')}
+                                  </span>
+                                </span>
+                                {userOpt && <span className="text-slate-700">{tr(userOpt.text)}</span>}
+                              </div>
+                              <div className="p-2.5 rounded-xl bg-white border border-emerald-200/80">
+                                <span className="font-bold text-emerald-700 block mb-0.5">
+                                  {language === 'zh' ? '正确答案' : 'Correct Answer'}: {q.correctOptionId}
+                                </span>
+                                {correctOpt && <span className="text-slate-800">{tr(correctOpt.text)}</span>}
+                              </div>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-white/80 border border-slate-200/60 text-slate-700 leading-relaxed">
+                              <span className="font-bold text-slate-800 mr-1">
+                                {language === 'zh' ? '解析:' : 'Explanation:'}
+                              </span>
+                              {tr(q.overallExplanation)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {mockReviewFilter === 'incorrect' &&
+                      mockExam.questions.filter((q) => mockExam.userAnswers[q.id] !== q.correctOptionId).length ===
+                        0 && (
+                        <div className="p-6 text-center text-emerald-700 font-semibold bg-emerald-50 rounded-2xl border border-emerald-200 text-xs">
+                          {language === 'zh' ? '太厉害了！本次模拟考全对无错题！' : 'Perfect score — zero missed questions!'}
+                        </div>
+                      )}
+                  </div>
+                </div>
+
                 {/* Restart Mock Button */}
                 <div className="pt-4 border-t border-slate-100 flex justify-end">
                   <button
@@ -861,88 +1044,167 @@ export const PracticeMode: React.FC = () => {
       {/* ========================================================================= */}
       {activeTab === 'mistakes' && (
         <div className="space-y-6">
-          {activeDrillMistake ? (
-            // Targeted Drill Card for Single Mistake
-            <div className="bg-white rounded-3xl border border-rose-200 shadow-md p-6 sm:p-8 space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-rose-100">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-rose-600" />
-                  {language === 'zh' ? '错题靶向变式强化' : 'Mistake Targeted Variant'}
-                </span>
-                <button
-                  onClick={() => setActiveDrillMistake(null)}
-                  className="text-xs text-slate-500 hover:text-slate-800 underline"
-                >
-                  {language === 'zh' ? '返回错题列表' : 'Back to Mistake List'}
-                </button>
-              </div>
+          {activeDrillMistake ? (() => {
+            const liveRecord = mistakes.find(
+              (m) => m.questionId === activeDrillMistake.originalRecord.questionId
+            );
+            const currentStreak = liveRecord ? liveRecord.consecutiveCorrect : 2;
+            const isDrillCorrect =
+              activeDrillMistake.chosenOption === activeDrillMistake.variantQuestion.correctOptionId;
 
-              <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
-                {tr(activeDrillMistake.variantQuestion.prompt)}
-              </p>
-
-              <div className="space-y-3 pt-2">
-                {activeDrillMistake.variantQuestion.options.map((opt) => {
-                  const isSelected = activeDrillMistake.chosenOption === opt.id;
-                  const isCorrect =
-                    opt.id === activeDrillMistake.variantQuestion.correctOptionId;
-
-                  let optStyle = 'border-slate-200 hover:border-rose-300';
-                  if (activeDrillMistake.isSubmitted) {
-                    if (isCorrect) optStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold';
-                    else if (isSelected) optStyle = 'border-rose-500 bg-rose-50 text-rose-950';
-                  } else if (isSelected) {
-                    optStyle = 'border-rose-600 bg-rose-50/60 ring-2 ring-rose-500/20';
-                  }
-
-                  return (
-                    <div
-                      key={opt.id}
-                      onClick={() => {
-                        if (!activeDrillMistake.isSubmitted) {
-                          setActiveDrillMistake((prev) =>
-                            prev ? { ...prev, chosenOption: opt.id } : null
-                          );
-                        }
-                      }}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${optStyle}`}
-                    >
-                      <div className="w-6 h-6 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0">
-                        {opt.id}
-                      </div>
-                      <div className="flex-1">
-                        <span>{tr(opt.text)}</span>
-                        {activeDrillMistake.isSubmitted && (
-                          <div className="text-xs mt-1 text-slate-600 pt-1 border-t border-slate-100">
-                            {tr(opt.explanation)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-                {!activeDrillMistake.isSubmitted ? (
-                  <button
-                    onClick={handleSubmitMistakeDrill}
-                    disabled={!activeDrillMistake.chosenOption}
-                    className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs"
-                  >
-                    {t.checkAnswerBtn}
-                  </button>
-                ) : (
+            return (
+              // Targeted Drill Card for Single Mistake
+              <div className="bg-white rounded-3xl border border-rose-200 shadow-md p-6 sm:p-8 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-rose-100">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-rose-600" />
+                      {language === 'zh' ? '错题靶向变式强化' : 'Mistake Targeted Variant'}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-slate-100 text-slate-700">
+                      {language === 'zh'
+                        ? `连对进度: ${Math.min(2, currentStreak)} / 2`
+                        : `Mastery Streak: ${Math.min(2, currentStreak)} / 2`}
+                    </span>
+                  </div>
                   <button
                     onClick={() => setActiveDrillMistake(null)}
-                    className="px-6 py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs shadow-xs"
+                    className="text-xs text-slate-500 hover:text-slate-800 underline"
                   >
-                    {language === 'zh' ? '完成复习' : 'Done with Drill'}
+                    {language === 'zh' ? '返回错题列表' : 'Back to Mistake List'}
                   </button>
+                </div>
+
+                <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed">
+                  {tr(activeDrillMistake.variantQuestion.prompt)}
+                </p>
+
+                <div className="space-y-3 pt-2">
+                  {activeDrillMistake.variantQuestion.options.map((opt) => {
+                    const isSelected = activeDrillMistake.chosenOption === opt.id;
+                    const isCorrect =
+                      opt.id === activeDrillMistake.variantQuestion.correctOptionId;
+
+                    let optStyle = 'border-slate-200 hover:border-rose-300';
+                    let badgeStyle = 'border-slate-300 text-slate-600';
+                    if (activeDrillMistake.isSubmitted) {
+                      if (isCorrect) {
+                        optStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-semibold';
+                        badgeStyle = 'bg-emerald-600 text-white border-emerald-600';
+                      } else if (isSelected) {
+                        optStyle = 'border-rose-500 bg-rose-50 text-rose-950';
+                        badgeStyle = 'bg-rose-600 text-white border-rose-600';
+                      } else {
+                        optStyle = 'border-slate-200/70 opacity-60 bg-slate-50/50';
+                      }
+                    } else if (isSelected) {
+                      optStyle = 'border-rose-600 bg-rose-50/60 ring-2 ring-rose-500/20';
+                      badgeStyle = 'bg-rose-600 text-white border-rose-600';
+                    }
+
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => {
+                          if (!activeDrillMistake.isSubmitted) {
+                            setActiveDrillMistake((prev) =>
+                              prev ? { ...prev, chosenOption: opt.id } : null
+                            );
+                          }
+                        }}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${optStyle}`}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-lg border flex items-center justify-center font-bold text-xs shrink-0 ${badgeStyle}`}
+                        >
+                          {opt.id}
+                        </div>
+                        <div className="flex-1">
+                          <span>{tr(opt.text)}</span>
+                          {activeDrillMistake.isSubmitted && (
+                            <div className="text-xs mt-1 text-slate-600 pt-1 border-t border-slate-100">
+                              {tr(opt.explanation)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {activeDrillMistake.isSubmitted && (
+                  <div className="space-y-3">
+                    <div
+                      className={`p-3.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 ${
+                        isDrillCorrect
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      {isDrillCorrect ? (
+                        liveRecord ? (
+                          <span>
+                            {language === 'zh'
+                              ? '回答正确！连对次数更新为 1 / 2，再答对 1 道相似变式即可从错题本中消除。'
+                              : 'Correct! Streak updated to 1 / 2 — answer 1 more similar variant correctly to clear this mistake.'}
+                          </span>
+                        ) : (
+                          <span>
+                            {language === 'zh'
+                              ? '连续两次答对同类变式！该易错考点已彻底攻克并从错题本消除。'
+                              : '2 consecutive correct answers! This concept has been mastered and cleared from your Mistake Notebook.'}
+                          </span>
+                        )
+                      ) : (
+                        <span>
+                          {language === 'zh'
+                            ? '本次回答有误，连对计数已重置为 0 / 2。请结合解析复盘后再挑战一道新变式！'
+                            : 'Incorrect — consecutive mastery streak has been reset to 0 / 2. Review the explanation and try another variant.'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200/70 text-xs text-slate-700 leading-relaxed space-y-1">
+                      <div className="font-bold text-blue-900">
+                        {language === 'zh' ? '核心思路精讲' : 'Detailed Economic Logic'}
+                      </div>
+                      <p>{tr(activeDrillMistake.variantQuestion.overallExplanation)}</p>
+                    </div>
+                  </div>
                 )}
+
+                <div className="pt-4 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3">
+                  {!activeDrillMistake.isSubmitted ? (
+                    <button
+                      onClick={handleSubmitMistakeDrill}
+                      disabled={!activeDrillMistake.chosenOption}
+                      className="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      {t.checkAnswerBtn}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setActiveDrillMistake(null)}
+                        className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors"
+                      >
+                        {language === 'zh' ? '返回错题列表' : 'Back to Mistake List'}
+                      </button>
+                      {liveRecord && (
+                        <button
+                          onClick={() => handleStartMistakeDrill(liveRecord)}
+                          className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>{language === 'zh' ? '再练一道同类变式' : 'Next Similar Variant'}</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : mistakes.length === 0 ? (
+            );
+          })() : mistakes.length === 0 ? (
             // Empty Mistake Book
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-12 text-center space-y-4">
               <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
@@ -980,9 +1242,14 @@ export const PracticeMode: React.FC = () => {
                   className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3 hover:border-slate-300 transition-all"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                      Unit {m.unit} ({m.topicCode})
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                        Unit {m.unit} ({m.topicCode})
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-slate-100 text-slate-600">
+                        {language === 'zh' ? `连对 ${m.consecutiveCorrect}/2` : `Streak ${m.consecutiveCorrect}/2`}
+                      </span>
+                    </div>
                     <button
                       onClick={() => handleStartMistakeDrill(m)}
                       className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all flex items-center gap-1.5"
@@ -998,8 +1265,13 @@ export const PracticeMode: React.FC = () => {
 
                   <div className="text-xs p-3 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-700 space-y-1">
                     <div className="text-rose-700 font-medium">
-                      ❌ {language === 'zh' ? '当时错选项' : 'Your Answer'}: {m.userWrongOptionId} |{' '}
-                      ✅ {language === 'zh' ? '正确答案' : 'Correct'}: {m.correctOptionId}
+                      ❌ {language === 'zh' ? '当时错选项' : 'Your Answer'}:{' '}
+                      {m.userWrongOptionId === 'SKIPPED'
+                        ? language === 'zh'
+                          ? '未作答'
+                          : 'Unanswered'
+                        : m.userWrongOptionId}{' '}
+                      | ✅ {language === 'zh' ? '正确答案' : 'Correct'}: {m.correctOptionId}
                     </div>
                     <div className="text-slate-600 leading-relaxed pt-1">
                       {tr(m.explanation)}
@@ -1046,7 +1318,9 @@ export const PracticeMode: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-blue-600">
-                    Question {classicIndex + 1} of {filteredClassic.length} · Unit {activeClassic.unit}
+                    {language === 'zh'
+                      ? `第 ${classicIndex + 1} / ${filteredClassic.length} 题 · 第 ${activeClassic.unit} 单元`
+                      : `Question ${classicIndex + 1} of ${filteredClassic.length} · Unit ${activeClassic.unit}`}
                   </span>
                   {classicVariants[currentClassic.id] ? (
                     <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono text-[11px] font-bold flex items-center gap-1">
@@ -1100,7 +1374,7 @@ export const PracticeMode: React.FC = () => {
                         });
                       }}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors"
-                      title="Restore original archetype"
+                      title={language === 'zh' ? '恢复考纲原题' : 'Restore original archetype'}
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>{language === 'zh' ? '还原原题' : 'Restore'}</span>
@@ -1108,7 +1382,7 @@ export const PracticeMode: React.FC = () => {
                   )}
 
                   <button
-                    onClick={() => navigateToGraph(activeClassic.topicId)}
+                    onClick={() => navigateToTopic(activeClassic.topicId)}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
                   >
                     <span>{t.openGraph}</span>

@@ -24,17 +24,47 @@ export const GraphWorkspace: React.FC = () => {
   const { language, t, tr } = useLanguage();
 
   const model = getModelById(selectedModelId) || getModelById('market-equilibrium-welfare')!;
-  const currentTopic = AP_TOPICS.find((top) => top.id === selectedTopicId || top.graphModelId === model.id);
+  const currentTopic =
+    AP_TOPICS.find((top) => top.id === selectedTopicId) ??
+    AP_TOPICS.find((top) => top.graphModelId === model.id);
   const matchingActivity = LEARNING_ACTIVITIES.find(
-    (a) => a.modelId === model.id || (currentTopic && a.topicId === currentTopic.id)
+    (a) => (currentTopic && a.topicId === currentTopic.id) || a.modelId === model.id
   );
 
-  const activeParams = modelParams[model.id] || model.defaultParams;
+  const activeParams = {
+    ...model.defaultParams,
+    ...(modelParams[model.id] || {})
+  };
+
+  const scopeBadgeMap = {
+    core: {
+      label: t.scopeCore,
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    },
+    extension: {
+      label: t.scopeExtension,
+      className: 'bg-amber-50 text-amber-700 border-amber-200'
+    },
+    excluded: {
+      label: t.scopeExcluded,
+      className: 'bg-slate-100 text-slate-600 border-slate-200'
+    }
+  } as const;
 
   // Run economic mathematical simulation
   const graphOutput = model.calculate(activeParams);
 
   const handleParamChange = (key: string, value: any) => {
+    if (model.id === 'monopolistic-competition' && key === 'marketPhase') {
+      if (value === 'short_run_profit') {
+        setModelParams(model.id, { ...activeParams, marketPhase: value, demandIntercept: Math.max(Number(activeParams.demandIntercept) || 90, 110) });
+        return;
+      }
+      if (value === 'short_run_loss') {
+        setModelParams(model.id, { ...activeParams, marketPhase: value, demandIntercept: Math.min(Number(activeParams.demandIntercept) || 90, 75) });
+        return;
+      }
+    }
     updateModelParam(model.id, key, value);
   };
 
@@ -80,8 +110,8 @@ export const GraphWorkspace: React.FC = () => {
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
                   {t.unit} {currentTopic.unit} ({currentTopic.topicCode})
                 </span>
-                <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {t.scopeCore}
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${scopeBadgeMap[currentTopic.scope].className}`}>
+                  {scopeBadgeMap[currentTopic.scope].label}
                 </span>
               </>
             )}

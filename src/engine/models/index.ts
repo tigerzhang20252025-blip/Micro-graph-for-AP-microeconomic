@@ -41,7 +41,7 @@ export const ECONOMIC_MODELS: Record<string, EconomicModel> = {
   'production-function-tp-mp-ap': productionFunctionModel,
   'cost-curves-short-run': costCurvesModel,
   'lratc-economies-of-scale': lratcModel,
-  'shutdown-rule': costCurvesModel,
+  'shutdown-rule': perfectCompetitionModel,
   'perfect-competition-side-by-side': perfectCompetitionModel,
 
   // Unit 4: Imperfect Competition

@@ -397,7 +397,7 @@ export const marketEquilibriumModel: EconomicModel = {
 
     // Generate Curve Points
     const xMax = 120;
-    const yMax = 110;
+    const yMax = Math.max(110, Math.ceil(demandIntercept / 10) * 10);
 
     const demandPoints = generateLinearPoints(
       { intercept: demandIntercept, slope: demandSlope },
@@ -626,6 +626,23 @@ export const marketEquilibriumModel: EconomicModel = {
       );
     }
 
+    if (isBindingControl && params.taxPerUnit === 0 && params.subsidyPerUnit === 0) {
+      points.push({
+        id: 'controlledTradePoint',
+        label: {
+          en: params.priceControlMode === 'ceiling' ? 'Binding Price Ceiling Outcome (Qc)' : 'Binding Price Floor Outcome (Qf)',
+          zh: params.priceControlMode === 'ceiling' ? '最高限价实际成交点（Qc）' : '最低限价实际成交点（Qf）'
+        },
+        shortLabel: params.priceControlMode === 'ceiling' ? 'Qc' : 'Qf',
+        x: Number(actualQ.toFixed(1)),
+        y: Number(params.controlledPrice.toFixed(1)),
+        color: params.priceControlMode === 'ceiling' ? '#d97706' : '#0284c7',
+        showDropLines: true,
+        xLabel: `Q=${actualQ.toFixed(1)}`,
+        yLabel: `P=$${params.controlledPrice.toFixed(1)}`
+      });
+    }
+
     // Welfare Shaded Areas
     const shadedAreas: ShadedAreaSpec[] = [];
 
@@ -659,18 +676,42 @@ export const marketEquilibriumModel: EconomicModel = {
 
     // Producer Surplus (PS)
     if (actualQ > 0 && priceSeller > supplyIntercept) {
-      const psPoints = (isBindingControl && params.priceControlMode === 'floor')
-        ? [
+      let psPoints: { x: number; y: number }[] = [];
+      if (isBindingControl && params.priceControlMode === 'floor') {
+        if (supplyIntercept >= 0) {
+          psPoints = [
             { x: 0, y: supplyIntercept },
             { x: 0, y: priceSeller },
             { x: actualQ, y: priceSeller },
             { x: actualQ, y: pSupplyAtActualQ }
-          ]
-        : [
+          ];
+        } else {
+          const qZero = Math.min(actualQ, -supplyIntercept / supplySlope);
+          psPoints = [
+            { x: 0, y: 0 },
+            { x: 0, y: priceSeller },
+            { x: actualQ, y: priceSeller },
+            { x: actualQ, y: Math.max(0, pSupplyAtActualQ) },
+            { x: qZero, y: 0 }
+          ];
+        }
+      } else {
+        if (supplyIntercept >= 0) {
+          psPoints = [
             { x: 0, y: supplyIntercept },
             { x: actualQ, y: priceSeller },
             { x: 0, y: priceSeller }
           ];
+        } else {
+          const qZero = Math.min(actualQ, -supplyIntercept / supplySlope);
+          psPoints = [
+            { x: 0, y: 0 },
+            { x: qZero, y: 0 },
+            { x: actualQ, y: priceSeller },
+            { x: 0, y: priceSeller }
+          ];
+        }
+      }
 
       shadedAreas.push({
         id: 'ps',
@@ -727,31 +768,18 @@ export const marketEquilibriumModel: EconomicModel = {
 
     // Deadweight Loss (DWL)
     if (dwl > 0.1) {
-      let dwlPoints = [
-        { x: actualQ, y: priceBuyer },
-        { x: qStar, y: pStar },
-        { x: actualQ, y: priceSeller }
-      ];
-      if (isBindingControl && params.priceControlMode === 'ceiling') {
-        dwlPoints = [
-          { x: actualQ, y: pDemandAtActualQ },
-          { x: qStar, y: pStar },
-          { x: actualQ, y: priceBuyer }
-        ];
-      } else if (isBindingControl && params.priceControlMode === 'floor') {
-        dwlPoints = [
-          { x: actualQ, y: priceBuyer },
-          { x: qStar, y: pStar },
-          { x: actualQ, y: pSupplyAtActualQ }
-        ];
-      } else if (params.subsidyPerUnit > 0) {
-        // Subsidy DWL triangle is between Q* and actualQ (to the right of equilibrium)
-        dwlPoints = [
-          { x: qStar, y: pStar },
-          { x: actualQ, y: priceSeller },
-          { x: actualQ, y: priceBuyer }
-        ];
-      }
+      const dwlPoints =
+        actualQ <= qStar
+          ? [
+              { x: actualQ, y: pDemandAtActualQ },
+              { x: qStar, y: pStar },
+              { x: actualQ, y: pSupplyAtActualQ }
+            ]
+          : [
+              { x: qStar, y: pStar },
+              { x: actualQ, y: pSupplyAtActualQ },
+              { x: actualQ, y: pDemandAtActualQ }
+            ];
       shadedAreas.push({
         id: 'dwl',
         label: { en: 'Deadweight Loss (DWL)', zh: '无谓损失（DWL）' },

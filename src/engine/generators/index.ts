@@ -1,6 +1,6 @@
 import { PracticeQuestion } from '../../data/practiceQuestions';
 import { DynamicQuestionTemplate } from '../../types/practice';
-import { randomChoice } from './helper';
+import { randomChoice, shuffleArray } from './helper';
 
 import {
   generatePpcOppCostQuestion,
@@ -242,7 +242,7 @@ export const DYNAMIC_QUESTION_TEMPLATES: DynamicQuestionTemplate[] = [
   {
     templateId: 'dyn-natural-monopoly-regulation',
     unit: 4,
-    topicCode: '4.4',
+    topicCode: '4.2',
     topicId: 'monopoly-single-price',
     title: { en: 'Natural Monopoly: Socially Optimal vs Fair-Return Price', zh: '自然垄断管制：社会最优定价与公平回报定价' },
     description: { en: 'Contrasts P = MC (allocative efficiency + subsidy) with P = ATC (normal profit).', zh: '对比 P = MC（消除 DWL 但需财政补贴）与 P = ATC（保本正常利润）。' },
@@ -251,7 +251,7 @@ export const DYNAMIC_QUESTION_TEMPLATES: DynamicQuestionTemplate[] = [
   {
     templateId: 'dyn-monopolistic-competition-excess-capacity',
     unit: 4,
-    topicCode: '4.3',
+    topicCode: '4.4',
     topicId: 'monopolistic-competition',
     title: { en: 'Monopolistic Competition Long-Run Tangency & Excess Capacity', zh: '垄断竞争长期切点与过剩产能计算' },
     description: { en: 'Calculates excess capacity: Q(min ATC) - Q(actual).', zh: '在长期均衡 P=ATC 处精确计算有效产能与实际产量的差额。' },
@@ -260,7 +260,7 @@ export const DYNAMIC_QUESTION_TEMPLATES: DynamicQuestionTemplate[] = [
   {
     templateId: 'dyn-price-discrimination-efficiency',
     unit: 4,
-    topicCode: '4.2',
+    topicCode: '4.3',
     topicId: 'monopoly-price-discrimination',
     title: { en: 'First-Degree Price Discrimination & Zero DWL', zh: '完全一级价格歧视：剩余全夺与无谓损失归零' },
     description: { en: 'Demonstrates output expansion to competitive level where DWL = 0 and CS = 0.', zh: '论证价格歧视使产量扩大至竞争水平，消灭 DWL 但剥夺全部消费者剩余。' },
@@ -410,5 +410,5 @@ export function generateMockExamQuestions(count: number = 15): PracticeQuestion[
   }
 
   // Shuffle order of questions so units are mixed realistically as on the real AP exam
-  return result.slice(0, count).sort(() => Math.random() - 0.5);
+  return shuffleArray(result.slice(0, count));
 }

@@ -2,8 +2,8 @@ import { EconomicModel, GraphCalculationOutput, ScenarioPreset, CurveSpec, KeyPo
 
 export interface IndifferenceParams {
   income: number;    // e.g. 60 to 180, default 120
-  priceX: number;    // e.g. 2 to 10, default 4
-  priceY: number;    // e.g. 2 to 10, default 6
+  priceX: number;    // e.g. 2 to 8, default 4
+  priceY: number;    // e.g. 3 to 10, default 6
 }
 
 const defaultParams: IndifferenceParams = {
@@ -130,21 +130,24 @@ export const indifferenceCurveModel: EconomicModel = {
       { x: xIntercept, y: 0 }
     ];
 
-    const generateIndifferenceCurve = (uVal: number, minX = 2, maxX = xMax): Point2D[] => {
+    const generateIndifferenceCurve = (uVal: number, minX = 0.5, maxX = xMax): Point2D[] => {
       const pts: Point2D[] = [];
       const uSq = uVal * uVal;
-      for (let x = minX; x <= maxX; x += 0.8) {
-        const y = uSq / x;
-        if (y <= yMax + 5) {
-          pts.push({ x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) });
-        }
+      const xTop = Math.max(minX, uSq / yMax);
+      if (xTop > maxX) return pts;
+
+      const steps = 60;
+      for (let i = 0; i <= steps; i++) {
+        const x = xTop + (i / steps) * (maxX - xTop);
+        const y = Math.min(yMax, uSq / x);
+        pts.push({ x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) });
       }
       return pts;
     };
 
-    const ic1Points = generateIndifferenceCurve(u1, 2, xMax);
-    const icOptPoints = generateIndifferenceCurve(optUtility, 2, xMax);
-    const ic3Points = generateIndifferenceCurve(u3, 4, xMax);
+    const ic1Points = generateIndifferenceCurve(u1, 0.5, xMax);
+    const icOptPoints = generateIndifferenceCurve(optUtility, 0.5, xMax);
+    const ic3Points = generateIndifferenceCurve(u3, 0.5, xMax);
 
     const curves: CurveSpec[] = [
       {

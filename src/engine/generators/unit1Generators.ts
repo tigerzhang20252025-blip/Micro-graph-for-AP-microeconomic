@@ -3,10 +3,10 @@ import { randomInt, randomChoice, buildFourOptions } from './helper';
 
 export function generatePpcOppCostQuestion(): PracticeQuestion {
   const goodPairs = [
-    { goodXEn: 'Drones', goodXZh: '无人机', goodYEn: 'Electric Vehicles', goodYZh: '电动汽车' },
-    { goodXEn: 'Solar Panels', goodXZh: '太阳能板', goodYEn: 'Wind Turbines', goodYZh: '风力发电机' },
-    { goodXEn: 'Wheat', goodXZh: '小麦', goodYEn: 'Corn', goodYZh: '玉米' },
-    { goodXEn: 'Robots', goodXZh: '工业机器人', goodYEn: 'Medical Devices', goodYZh: '医疗设备' }
+    { goodXEn: 'Drones', goodSingularEn: 'Drone', goodXZh: '无人机', goodYEn: 'Electric Vehicles', goodYZh: '电动汽车' },
+    { goodXEn: 'Solar Panels', goodSingularEn: 'Solar Panel', goodXZh: '太阳能板', goodYEn: 'Wind Turbines', goodYZh: '风力发电机' },
+    { goodXEn: 'Wheat', goodSingularEn: 'unit of Wheat', goodXZh: '小麦', goodYEn: 'Corn', goodYZh: '玉米' },
+    { goodXEn: 'Robots', goodSingularEn: 'Robot', goodXZh: '工业机器人', goodYEn: 'Medical Devices', goodYZh: '医疗设备' }
   ];
   const pair = randomChoice(goodPairs);
 
@@ -15,14 +15,18 @@ export function generatePpcOppCostQuestion(): PracticeQuestion {
   const x2 = x1 + dx;
 
   // Opportunity cost ratio: e.g. 1.5, 2.0, 2.5, 0.5, 3.0
-  const oppRatio = randomChoice([0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0]);
+  const oppRatio = randomChoice([0.5, 1.5, 2.0, 2.5, 3.0, 4.0]);
   const dy = dx * oppRatio;
-  const y1 = dy + randomInt(20, 60);
+  const invertedRatio = Number((1 / oppRatio).toFixed(2));
+  let extraY = randomInt(20, 60);
+  while (extraY === dy || extraY === oppRatio || extraY === invertedRatio) {
+    extraY = randomInt(20, 60);
+  }
+  const y1 = dy + extraY;
   const y2 = y1 - dy;
 
   const correctText = `${oppRatio} ${pair.goodYEn}`;
   const correctTextZh = `${oppRatio} 单位${pair.goodYZh}`;
-  const invertedRatio = Number((1 / oppRatio).toFixed(2));
 
   const { options, correctOptionId } = buildFourOptions(
     {
@@ -65,7 +69,7 @@ export function generatePpcOppCostQuestion(): PracticeQuestion {
     isDynamic: true,
     templateId: 'dyn-ppc-opp-cost',
     prompt: {
-      en: `An economy produces only two goods: ${pair.goodXEn} and ${pair.goodYEn}. Moving from combination (${x1} ${pair.goodXEn}, ${y1} ${pair.goodYEn}) to (${x2} ${pair.goodXEn}, ${y2} ${pair.goodYEn}), what is the opportunity cost per additional ${pair.goodXEn.slice(0, -1)} produced?`,
+      en: `An economy produces only two goods: ${pair.goodXEn} and ${pair.goodYEn}. Moving from combination (${x1} ${pair.goodXEn}, ${y1} ${pair.goodYEn}) to (${x2} ${pair.goodXEn}, ${y2} ${pair.goodYEn}), what is the opportunity cost per additional ${pair.goodSingularEn} produced?`,
       zh: `某经济体仅生产两种物品：${pair.goodXZh}与${pair.goodYZh}。当生产组合由（${x1} 单位${pair.goodXZh}，${y1} 单位${pair.goodYZh}）变为（${x2} 单位${pair.goodXZh}，${y2} 单位${pair.goodYZh}）时，每多生产 1 单位${pair.goodXZh}的机会成本是多少？`
     },
     options,

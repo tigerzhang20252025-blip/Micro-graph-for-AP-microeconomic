@@ -508,8 +508,8 @@ export const LEARNING_ACTIVITIES: LearningActivity[] = [
       zh: '买方垄断：最低工资政策神奇“增加就业人数”的经济学反常'
     },
     scenario: {
-      en: 'A massive mining firm is the sole employer in an isolated mountain town. Currently, it hires where MRP = MFC (7.8 workers) and pays a depressed wage of $21.70/hr. The government imposes a binding minimum wage of $37/hr.',
-      zh: '某偏远矿区仅有一家大型采矿集团（劳动力市场的买方垄断者）。目前其按 MRP = MFC 仅雇佣 7.8 名矿工，并压低工资至 $21.70/小时。政府强制出台法定最低工资 $37/小时。'
+      en: 'A massive mining firm is the sole employer in an isolated mountain town. Currently, it hires where MRP = MFC (12.2 workers) and pays a depressed wage of $28.33/hr. The government imposes a binding minimum wage of $32/hr (equal to the competitive equilibrium wage).',
+      zh: '某偏远矿区仅有一家大型采矿集团（劳动力市场的买方垄断者）。目前其按 MRP = MFC 仅雇佣 12.2 名矿工，并压低工资至 $28.33/小时。政府强制出台等于竞争均衡工资的法定最低工资 $32/小时。'
     },
     graphInitialParams: {
       marketStructure: 'monopsony',
@@ -523,7 +523,7 @@ export const LEARNING_ACTIVITIES: LearningActivity[] = [
       laborProductPrice: 5,
       marginalProductBase: 24,
       mpDiminishingRate: 1.2,
-      minWageRate: 37
+      minWageRate: 32
     },
     predictionPrompt: {
       en: 'Unlike in a competitive labor market where minimum wage causes unemployment, what happens to employment (L) in this monopsony when the minimum wage is set equal to the competitive wage?',
@@ -533,13 +533,13 @@ export const LEARNING_ACTIVITIES: LearningActivity[] = [
       {
         id: 'opt-a',
         label: {
-          en: 'Employment INCREASES (from 7.8 to 18 workers) and wages rise simultaneously!',
-          zh: '雇佣人数显著增加（从 7.8 人增加到 18 人），工人工资同时大幅上升！'
+          en: 'Employment INCREASES (from 12.2 to 14.7 workers) and wages rise simultaneously!',
+          zh: '雇佣人数显著增加（从 12.2 人增加到 14.7 人），工人工资同时大幅上升！'
         },
         isCorrect: true,
         feedback: {
-          en: 'Correct! In monopsony, the employer kept hiring low because adding a worker previously forced higher wages for all existing workers (making MFC > Wage). A minimum wage makes MFC perfectly flat at $37, removing the disincentive to hire and expanding employment to the competitive level!',
-          zh: '完全正确！在买方垄断中，雇主之前故意压制招工，是因为每多雇一人就必须给现有全员加薪（导致 MFC 陡峭高于工资）。法定最低工资强制将受控区间的边际要素成本线削平在 $37，消除了雇主压低产量的动力，使就业人数激增至社会有效水平！'
+          en: 'Correct! In monopsony, the employer kept hiring low because adding a worker previously forced higher wages for all existing workers (making MFC > Wage). A minimum wage makes MFC perfectly flat at $32, removing the disincentive to hire and expanding employment to the competitive level!',
+          zh: '完全正确！在买方垄断中，雇主之前故意压制招工，是因为每多雇一人就必须给现有全员加薪（导致 MFC 陡峭高于工资）。法定最低工资强制将受控区间的边际要素成本线削平在 $32，消除了雇主压低产量的动力，使就业人数扩大至社会有效水平！'
         }
       },
       {
@@ -568,21 +568,21 @@ export const LEARNING_ACTIVITIES: LearningActivity[] = [
       }
     ],
     hint: {
-      en: 'Why did the monopsonist restrict hiring originally? Because MFC was much higher than the wage. What happens to MFC when the government dictates that the wage is fixed at $37 regardless of how many people are hired?',
-      zh: '买方垄断最初为何故意少招人？因为 MFC 远远高于工资。当政府硬性规定招多少人工资都统一为 $37 时，增聘工人的额外成本（MFC）会变成怎样？变平成水平线！'
+      en: 'Why did the monopsonist restrict hiring originally? Because MFC was much higher than the wage. What happens to MFC when the government dictates that the wage is fixed at $32 regardless of how many people are hired?',
+      zh: '买方垄断最初为何故意少招人？因为 MFC 远远高于工资。当政府硬性规定招多少人工资都统一为 $32 时，增聘工人的额外成本（MFC）会变成怎样？变平成水平线！'
     },
     stepByStepExplanation: [
       {
-        en: 'Step 1: The unregulated monopsonist faces an upward-sloping Labor Supply curve, so MFC > S_L. It restricts hiring to 7.8 workers to keep wages at $21.70.',
-        zh: '第一步：未管制的买方垄断面对向上倾斜的劳动供给线，增聘需加薪导致 MFC > 劳动供给线。它刻意将雇工压制在 7.8 人以将工资打压至 $21.70。'
+        en: 'Step 1: The unregulated monopsonist faces an upward-sloping Labor Supply curve, so MFC > S_L. It restricts hiring to 12.2 workers to keep wages at $28.33.',
+        zh: '第一步：未管制的买方垄断面对向上倾斜的劳动供给线，增聘需加薪导致 MFC > 劳动供给线。它刻意将雇工压制在 12.2 人以将工资打压至 $28.33。'
       },
       {
-        en: 'Step 2: Imposing a minimum wage of $37 means the firm can hire up to 18 workers at exactly $37 each without raising wages on previous workers. MFC becomes horizontal at $37.',
-        zh: '第二步：设定 $37 的法定最低工资意味着在该工资水平下，企业招募多达 18 名工人的每人成本恒为 $37，无需额外加薪。受控区间内 MFC 变为平直水平线。'
+        en: 'Step 2: Imposing a minimum wage of $32 means the firm can hire up to 14.7 workers at exactly $32 each without raising wages on previous workers. MFC becomes horizontal at $32.',
+        zh: '第二步：设定 $32 的法定最低工资意味着在该工资水平下，企业招募多达 14.7 名工人的每人成本恒为 $32，无需额外加薪。受控区间内 MFC 变为平直水平线。'
       },
       {
-        en: 'Step 3: The firm hires where MRP = MFC ($37), expanding employment from 7.8 to 18 workers, achieving allocative efficiency in factor markets!',
-        zh: '第三步：企业在 MRP = MFC（$37）处雇佣，就业人数从 7.8 人激增至 18 人，神奇达成了要素市场的配置最优！'
+        en: 'Step 3: The firm hires where MRP = MFC ($32), expanding employment from 12.2 to 14.7 workers, achieving allocative efficiency in factor markets!',
+        zh: '第三步：企业在 MRP = MFC（$32）处雇佣，就业人数从 12.2 人增加至 14.7 人，神奇达成了要素市场的配置最优！'
       }
     ],
     keyTakeaway: {

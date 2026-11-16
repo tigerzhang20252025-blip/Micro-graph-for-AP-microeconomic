@@ -176,7 +176,7 @@ export const monopolyModel: EconomicModel = {
         zh: '固定成本（TFC / 基础设施投入）'
       },
       min: 80,
-      max: 300,
+      max: 500,
       step: 10,
       unit: '$'
     }
@@ -220,18 +220,16 @@ export const monopolyModel: EconomicModel = {
       actualQ = qSO;
       actualP = pSO;
     } else if (params.regulationType === 'fair_return') {
-      // Fair return: P = ATC => a - b*Q = FC/Q + 10 + 0.5*mcSlope*Q
-      // Solve numerically:
-      let bestQ = qMonopoly;
-      let minDiff = 999;
-      for (let cq = qMonopoly; cq <= qSO * 1.2; cq += 0.1) {
-        const diff = Math.abs((a - b * cq) - evaluateFirmATC(cq));
-        if (diff < minDiff) {
-          minDiff = diff;
-          bestQ = cq;
-        }
+      // Fair return: P = ATC => (b + 0.5*mcSlope)*Q^2 - (a - mcIntercept)*Q + FC = 0
+      const qa = b + 0.5 * mcSlope;
+      const qb = a - mcIntercept;
+      const disc = qb * qb - 4 * qa * params.fixedCost;
+      if (disc >= 0) {
+        actualQ = (qb + Math.sqrt(disc)) / (2 * qa);
+      } else {
+        // Demand is below ATC everywhere; choose quantity minimizing unit gap (ATC - P)
+        actualQ = Math.max(0.5, qb / (2 * qa));
       }
-      actualQ = bestQ;
       actualP = a - b * actualQ;
     }
 
@@ -254,17 +252,19 @@ export const monopolyModel: EconomicModel = {
     } else {
       cs = Math.max(0, 0.5 * (a - actualP) * actualQ);
       profit = (actualP - atcAtQ) * actualQ;
-      if (actualQ < qSO) {
-        // Triangle between Demand and MC from actualQ to qSO
+      if (Math.abs(actualQ - qSO) > 1e-4) {
+        // Triangle between Demand and MC from actualQ to qSO (covers both under- and over-production)
         const pDemandAtQ = a - b * actualQ;
         const pMCAtQ = mcIntercept + mcSlope * actualQ;
-        dwl = 0.5 * (pDemandAtQ - pMCAtQ) * (qSO - actualQ);
+        dwl = Math.abs(0.5 * (pDemandAtQ - pMCAtQ) * (qSO - actualQ));
       }
     }
 
     // Generate Curves
-    const xMax = 80;
-    const yMax = a * 1.1;
+    const qUpperLimit = Math.max(qSO, actualQ);
+    const xMax = Math.max(80, Math.ceil((qUpperLimit * 1.15) / 10) * 10);
+    const xStep = xMax > 90 ? 20 : 10;
+    const yMax = Math.ceil((a * 1.15) / 10) * 10;
 
     const demandPts = generateLinearPoints({ intercept: a, slope: -b }, 0, xMax, 30, 0, yMax);
     const mrPts = generateLinearPoints({ intercept: a, slope: -2 * b }, 0, xMax, 30, 0, yMax);
@@ -273,7 +273,7 @@ export const monopolyModel: EconomicModel = {
     const atcPts: { x: number; y: number }[] = [];
     for (let cq = 4; cq <= xMax; cq += 1.5) {
       const atc = evaluateFirmATC(cq);
-      if (Number.isFinite(atc) && atc >= 0) atcPts.push({ x: Number(cq.toFixed(2)), y: Number(atc.toFixed(2)) });
+      if (atc <= yMax) atcPts.push({ x: Number(cq.toFixed(2)), y: Number(atc.toFixed(2)) });
     }
 
     const curves: CurveSpec[] = [
@@ -605,7 +605,7 @@ export const monopolyModel: EconomicModel = {
         xMax,
         yMin: 0,
         yMax,
-        xStep: 10,
+        xStep,
         yStep: 10,
         xSuffix: ' units',
         yPrefix: '$'

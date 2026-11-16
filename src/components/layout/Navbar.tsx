@@ -22,30 +22,35 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const navItems: { view: AppView; label: string; icon: React.ReactNode }[] = [
+  const navItems: { view: AppView; label: string; desktopLabel: string; icon: React.ReactNode }[] = [
     {
       view: 'library',
       label: t.navTopicLibrary,
+      desktopLabel: language === 'zh' ? t.navTopicLibrary : 'Topic Library',
       icon: <BookOpen className="w-4 h-4" />
     },
     {
       view: 'graph',
       label: t.navGraphLab,
+      desktopLabel: language === 'zh' ? t.navGraphLab : 'Graph Lab',
       icon: <LineChart className="w-4 h-4" />
     },
     {
       view: 'learning',
       label: t.navLearningMode,
+      desktopLabel: language === 'zh' ? t.navLearningMode : 'Learn',
       icon: <Sparkles className="w-4 h-4" />
     },
     {
       view: 'practice',
       label: t.navPracticeMode,
+      desktopLabel: language === 'zh' ? t.navPracticeMode : 'Practice',
       icon: <BrainCircuit className="w-4 h-4" />
     },
     {
       view: 'reference',
       label: t.navReferenceGlossary,
+      desktopLabel: language === 'zh' ? t.navReferenceGlossary : 'Reference',
       icon: <ShieldCheck className="w-4 h-4" />
     }
   ];
@@ -58,64 +63,65 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between gap-2 h-16">
           {/* Brand Logo & Title */}
           <div
             onClick={() => setCurrentView('library')}
-            className="flex items-center gap-3 cursor-pointer select-none group"
+            className="flex items-center gap-2.5 cursor-pointer select-none group shrink-0"
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30 group-hover:bg-blue-700 transition-colors">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/30 group-hover:bg-blue-700 transition-colors shrink-0">
               <LineChart className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-900 text-sm sm:text-base tracking-tight group-hover:text-blue-600 transition-colors">
+                <span className="font-bold text-slate-900 text-sm sm:text-base tracking-tight group-hover:text-blue-600 transition-colors whitespace-nowrap">
                   AP Micro Graph Lab
                 </span>
-                <span className="hidden md:inline-flex items-center px-2 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+                <span className="hidden xl:inline-flex items-center px-2 py-0.5 text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-full whitespace-nowrap shrink-0">
                   CED 2026–27
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 hidden sm:block">
+              <p className="text-[11px] text-slate-500 hidden sm:block whitespace-nowrap">
                 {language === 'zh' ? 'AP微观经济学交互图表实验室' : 'Interactive AP Microeconomics'}
               </p>
             </div>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1 shrink-0">
             {navItems.map((item) => {
               const isActive = currentView === item.view;
               return (
                 <button
                   key={item.view}
                   onClick={() => handleNavClick(item.view)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  title={item.label}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'bg-blue-50 text-blue-700 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
                   {item.icon}
-                  <span>{item.label}</span>
+                  <span>{item.desktopLabel}</span>
                 </button>
               );
             })}
           </nav>
 
           {/* Right Action: Search & Language Switch Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Quick Search Trigger Button */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-all shadow-2xs group"
+              className="inline-flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-all shadow-2xs group whitespace-nowrap shrink-0"
               title={language === 'zh' ? '搜索 AP 经济学缩写与概念 (⌘K)' : 'Search AP Micro Acronyms & Terms (⌘K)'}
             >
-              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-              <span className="hidden sm:inline">
-                {language === 'zh' ? '搜索缩写/概念' : 'Search Acronyms'}
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-colors shrink-0" />
+              <span className="hidden xl:inline">
+                {language === 'zh' ? '搜索缩写/概念' : 'Search'}
               </span>
-              <kbd className="hidden md:inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-500 font-mono shadow-2xs">
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-white border border-slate-200 text-[10px] text-slate-500 font-mono shadow-2xs">
                 ⌘K
               </kbd>
             </button>
@@ -123,26 +129,26 @@ export const Navbar: React.FC = () => {
             <button
               onClick={toggleLanguage}
               aria-label="Toggle language"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border-2 border-blue-600 bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-blue-600 bg-white hover:bg-blue-50 text-blue-700 font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 whitespace-nowrap shrink-0"
             >
-              <Globe className="w-4 h-4 text-blue-600" />
+              <Globe className="w-4 h-4 text-blue-600 shrink-0" />
               <span>{t.langSwitchButton}</span>
             </button>
 
-            {/* Mobile menu hamburger button */}
+            {/* Mobile/Tablet menu hamburger button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label="Open mobile menu"
+              className="xl:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+              aria-label="Open navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile/Tablet Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-100 py-3 space-y-1">
+          <div className="xl:hidden border-t border-slate-100 py-3 space-y-1">
             <button
               onClick={() => {
                 setIsSearchOpen(true);

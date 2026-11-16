@@ -29,8 +29,8 @@ const presets: ScenarioPreset[] = [
   {
     id: 'progressive-redistribution',
     name: {
-      en: 'Progressive Tax & Welfare Transfers (Gini drops to 0.28)',
-      zh: '累进税与福利转移支付调节（基尼系数降至 0.28）'
+      en: 'Progressive Tax & Welfare Transfers (Gini drops to ~0.29)',
+      zh: '累进税与福利转移支付调节（基尼系数降至约 0.29）'
     },
     description: {
       en: 'Progressive income taxes on top earners combined with welfare cash transfers to low-income households shifts the Lorenz curve inward toward the 45-degree line.',
@@ -38,7 +38,7 @@ const presets: ScenarioPreset[] = [
     },
     params: {
       inequalityExponent: 2.33,
-      redistributionEffect: 35
+      redistributionEffect: 40
     }
   },
   {
@@ -289,7 +289,12 @@ export const lorenzCurveModel: EconomicModel = {
       {
         id: 'giniChange',
         label: { en: 'Fiscal Policy Redistribution Impact', zh: '财政再分配调节效应' },
-        value: redist > 0 ? `Reduced by -${(rawGini - gini).toFixed(3)} (-${((1 - gini / rawGini) * 100).toFixed(1)}%)` : 'No fiscal redistribution active',
+        value:
+          redist > 0
+            ? rawGini > 1e-6
+              ? `Reduced by -${(rawGini - gini).toFixed(3)} (-${((1 - gini / rawGini) * 100).toFixed(1)}%)`
+              : 'Already at Gini = 0.000 (Maximum Equality)'
+            : 'No fiscal redistribution active',
         color: redist > 0 ? '#059669' : '#6b7280'
       },
       {

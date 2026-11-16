@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { GraphCalculationOutput, Point2D, KeyPointSpec } from '../../types/graph';
+import { AxisConfig, GraphCalculationOutput, Point2D, KeyPointSpec } from '../../types/graph';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAppState } from '../../context/AppStateContext';
 import { resolveGraphDomain } from '../../engine/graphDomain';
@@ -10,10 +10,83 @@ interface GraphContainerProps {
   visibilityScope: string;
 }
 
+/**
+ * Clips a polyline against the axis plot rectangle [xMin, xMax] x [yMin, yMax]
+ * using Liang-Barsky segment clipping so curve labels attach at actual visible borders.
+ */
+function clipPolylineToAxes(points: Point2D[], axes: AxisConfig): Point2D[] {
+  const { xMin, xMax, yMin, yMax } = axes;
+  const inside = (pt: Point2D) => pt.x >= xMin && pt.x <= xMax && pt.y >= yMin && pt.y <= yMax;
+
+  if (points.length === 0) return [];
+  if (points.length === 1) return inside(points[0]) ? [points[0]] : [];
+
+  const clipped: Point2D[] = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+
+    let t0 = 0;
+    let t1 = 1;
+    const checks: [number, number][] = [
+      [-dx, p0.x - xMin],
+      [dx, xMax - p0.x],
+      [-dy, p0.y - yMin],
+      [dy, yMax - p0.y]
+    ];
+
+    let visible = true;
+    for (const [p, q] of checks) {
+      if (Math.abs(p) < 1e-12) {
+        if (q < 0) {
+          visible = false;
+          break;
+        }
+      } else {
+        const r = q / p;
+        if (p < 0) {
+          if (r > t1) {
+            visible = false;
+            break;
+          }
+          if (r > t0) t0 = r;
+        } else {
+          if (r < t0) {
+            visible = false;
+            break;
+          }
+          if (r < t1) t1 = r;
+        }
+      }
+    }
+
+    if (visible) {
+      const a = { x: p0.x + t0 * dx, y: p0.y + t0 * dy };
+      const b = { x: p0.x + t1 * dx, y: p0.y + t1 * dy };
+      const prev = clipped[clipped.length - 1];
+      if (!prev || Math.hypot(prev.x - a.x, prev.y - a.y) > 1e-6) {
+        clipped.push(a);
+      }
+      if (Math.hypot(a.x - b.x, a.y - b.y) > 1e-6 || clipped.length === 0) {
+        clipped.push(b);
+      }
+    }
+  }
+  return clipped;
+}
+
 export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, visibilityScope }) => {
   const { tr } = useLanguage();
   const { layerVisibility, hiddenCurveIds } = useAppState();
-  const clipId = `plot-clip-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const clipId = `plot-clip-${uid}`;
+  const axisArrowId = `axis-arrow-${uid}`;
+  const patDiagonalLeftId = `pat-diagonal-left-${uid}`;
+  const patDiagonalRightId = `pat-diagonal-right-${uid}`;
+  const patCrossId = `pat-cross-${uid}`;
+  const patDotsId = `pat-dots-${uid}`;
 
   // SVG dimensions & padding (Standard 4:3 high-res responsive viewBox)
   const svgWidth = 640;
@@ -34,6 +107,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
   });
   const axes = domain.axes;
   const visiblePoints = points.filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y));
+  const visibleShadedAreas = shadedAreas.filter((area) => area.visible && area.points.length > 0);
 
   // Coordinate transforms: Economic Space -> SVG Space
   const scaleX = (x: number): number => {
@@ -62,29 +136,31 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
   // Generate tick steps
   const xTicks: number[] = [];
   const xStep = axes.xStep || (axes.xMax - axes.xMin) / 5;
-  for (let val = axes.xMin; val <= axes.xMax; val += xStep) {
+  for (let val = axes.xMin; val <= axes.xMax + 1e-9; val += xStep) {
     xTicks.push(Number(val.toFixed(1)));
   }
   const xTickLabelStride = xTicks.length > 7 ? Math.ceil((xTicks.length - 1) / 6) : 1;
 
   const yTicks: number[] = [];
   const yStep = axes.yStep || (axes.yMax - axes.yMin) / 5;
-  for (let val = axes.yMin; val <= axes.yMax; val += yStep) {
+  for (let val = axes.yMin; val <= axes.yMax + 1e-9; val += yStep) {
     yTicks.push(Number(val.toFixed(1)));
   }
+  const yTickLabelStride = yTicks.length > 7 ? Math.ceil((yTicks.length - 1) / 6) : 1;
 
-  // Interactive mouse tracking
+  // Interactive mouse tracking (accounting for preserveAspectRatio="xMidYMid meet" letterboxing)
   const [hoverCoord, setHoverCoord] = useState<{ xVal: number; yVal: number; px: number; py: number } | null>(null);
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
+    if (rect.width === 0 || rect.height === 0) return;
 
-    const scaleFactorX = svgWidth / rect.width;
-    const scaleFactorY = svgHeight / rect.height;
-    const svgX = clientX * scaleFactorX;
-    const svgY = clientY * scaleFactorY;
+    const scale = Math.min(rect.width / svgWidth, rect.height / svgHeight);
+    const offsetX = (rect.width - svgWidth * scale) / 2;
+    const offsetY = (rect.height - svgHeight * scale) / 2;
+
+    const svgX = (e.clientX - rect.left - offsetX) / scale;
+    const svgY = (e.clientY - rect.top - offsetY) / scale;
 
     if (
       svgX >= padding.left &&
@@ -265,15 +341,24 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
   const rawCurveLabels: CurveLabelLayout[] = visibleCurves
     .filter((c) => c.points.length > 0)
     .map((curve) => {
-      const lastPt = curve.points[curve.points.length - 1];
-      const rawX = scaleX(lastPt.x);
-      const rawY = scaleY(lastPt.y);
+      const inBounds = clipPolylineToAxes(curve.points, axes);
+      const sourcePts = inBounds.length > 0 ? inBounds : curve.points;
+      const pos = curve.endLabelPosition || 'end';
+      const anchorPt =
+        pos === 'start'
+          ? sourcePts[0]
+          : pos === 'middle'
+          ? sourcePts[Math.floor(sourcePts.length / 2)]
+          : sourcePts[sourcePts.length - 1];
+
+      const rawX = scaleX(anchorPt.x);
+      const rawY = scaleY(anchorPt.y);
       const width = Math.max(30, curve.shortLabel.length * 8.5 + 12);
       const height = 18;
 
-      // Clamp within viewport
-      const clampedX = Math.min(rawX + 8, svgWidth - width - 6);
-      const clampedY = Math.max(padding.top + 10, Math.min(svgHeight - padding.bottom - 16, rawY + 4));
+      // Clamp within viewport near the clipped visible border
+      const clampedX = Math.max(padding.left + 4, Math.min(rawX + 8, svgWidth - width - 6));
+      const clampedY = Math.max(padding.top + 14, Math.min(svgHeight - padding.bottom - 10, rawY + 4));
 
       return {
         curveId: curve.id,
@@ -311,18 +396,20 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
           <span className="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span>
           {title}
         </h3>
-        {hoverCoord && (
-          <div className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
-            {tr(axes.xLabel)}: {axes.xPrefix || ''}{hoverCoord.xVal.toFixed(1)}{axes.xSuffix || ''}
-            {' | '}
-            {tr(axes.yLabel)}: {axes.yPrefix || ''}{hoverCoord.yVal.toFixed(1)}{axes.ySuffix || ''}
-          </div>
-        )}
-        {domain.expanded && (
-          <div className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-1 rounded-md border border-amber-200">
-            {tr({ en: 'Axes expanded to show all content', zh: '坐标轴已自动扩展以显示全部内容' })}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {hoverCoord && (
+            <div className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs">
+              {tr(axes.xLabel)}: {axes.xPrefix || ''}{hoverCoord.xVal.toFixed(1)}{axes.xSuffix || ''}
+              {' | '}
+              {tr(axes.yLabel)}: {axes.yPrefix || ''}{hoverCoord.yVal.toFixed(1)}{axes.ySuffix || ''}
+            </div>
+          )}
+          {domain.expanded && (
+            <div className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-1 rounded-md border border-amber-200">
+              {tr({ en: 'Axes expanded to show all content', zh: '坐标轴已自动扩展以显示全部内容' })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* SVG Canvas */}
@@ -338,7 +425,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
           <defs>
             {/* Arrowhead marker for axes */}
             <marker
-              id="axis-arrow"
+              id={axisArrowId}
               viewBox="0 0 10 10"
               refX="6"
               refY="5"
@@ -350,16 +437,16 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
             </marker>
 
             {/* Accessibility Patterns for Welfare Areas */}
-            <pattern id="pat-diagonal-left" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+            <pattern id={patDiagonalLeftId} width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
               <line x1="0" y1="0" x2="0" y2="8" stroke="#d97706" strokeWidth="2" opacity="0.45" />
             </pattern>
-            <pattern id="pat-diagonal-right" width="8" height="8" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse">
+            <pattern id={patDiagonalRightId} width="8" height="8" patternTransform="rotate(-45 0 0)" patternUnits="userSpaceOnUse">
               <line x1="0" y1="0" x2="0" y2="8" stroke="#2563eb" strokeWidth="2" opacity="0.4" />
             </pattern>
-            <pattern id="pat-cross" width="10" height="10" patternUnits="userSpaceOnUse">
+            <pattern id={patCrossId} width="10" height="10" patternUnits="userSpaceOnUse">
               <path d="M 0 0 L 10 10 M 10 0 L 0 10" stroke="#ef4444" strokeWidth="1.5" opacity="0.5" />
             </pattern>
-            <pattern id="pat-dots" width="8" height="8" patternUnits="userSpaceOnUse">
+            <pattern id={patDotsId} width="8" height="8" patternUnits="userSpaceOnUse">
               <circle cx="4" cy="4" r="1.5" fill="#8b5cf6" opacity="0.6" />
             </pattern>
             <clipPath id={clipId}>
@@ -400,14 +487,13 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
           {/* Shaded Welfare Areas (Surpluses, DWL, Tax Revenue) */}
           {layerVisibility.showSurplus && (
             <g className="welfare-areas" clipPath={`url(#${clipId})`}>
-              {shadedAreas.map((area) => {
-                if (!area.visible || area.points.length === 0) return null;
+              {visibleShadedAreas.map((area) => {
                 const pathString = pointsToSvgPath(area.points) + ' Z';
                 let patternUrl = undefined;
-                if (area.pattern === 'diagonal-left') patternUrl = 'url(#pat-diagonal-left)';
-                else if (area.pattern === 'diagonal-right') patternUrl = 'url(#pat-diagonal-right)';
-                else if (area.pattern === 'cross') patternUrl = 'url(#pat-cross)';
-                else if (area.pattern === 'dots') patternUrl = 'url(#pat-dots)';
+                if (area.pattern === 'diagonal-left') patternUrl = `url(#${patDiagonalLeftId})`;
+                else if (area.pattern === 'diagonal-right') patternUrl = `url(#${patDiagonalRightId})`;
+                else if (area.pattern === 'cross') patternUrl = `url(#${patCrossId})`;
+                else if (area.pattern === 'dots') patternUrl = `url(#${patDotsId})`;
 
                 return (
                   <g key={`area-${area.id}`}>
@@ -647,7 +733,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
               y2={padding.top - 12}
               stroke="#334155"
               strokeWidth="2"
-              markerEnd="url(#axis-arrow)"
+              markerEnd={`url(#${axisArrowId})`}
             />
             {/* X Axis line with arrow */}
             <line
@@ -657,18 +743,24 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
               y2={svgHeight - padding.bottom}
               stroke="#334155"
               strokeWidth="2"
-              markerEnd="url(#axis-arrow)"
+              markerEnd={`url(#${axisArrowId})`}
             />
 
-            {/* Y Axis Tick Marks & Numbers (with collision suppression) */}
-            {yTicks.map((y) => {
+            {/* Y Axis Tick Marks & Numbers (with collision suppression and stride) */}
+            {yTicks.map((y, index) => {
               const sy = scaleY(y);
               const isSuppressedY =
                 layerVisibility.showDropLines && activeDropYCoords.some((by) => Math.abs(by - sy) < 18);
+              const lastYCoord = scaleY(yTicks[yTicks.length - 1]);
+              const isNearLastY = index < yTicks.length - 1 && Math.abs(lastYCoord - sy) < 18;
+              const showYLabel =
+                !isSuppressedY &&
+                (index === yTicks.length - 1 ||
+                  (index % yTickLabelStride === 0 && (index === 0 || yTickLabelStride === 1 || !isNearLastY)));
               return (
                 <g key={`tick-y-${y}`} transform={`translate(${padding.left}, ${sy})`}>
                   <line x1="-5" y1="0" x2="0" y2="0" stroke="#334155" strokeWidth="1.5" />
-                  {!isSuppressedY && (
+                  {showYLabel && (
                     <text
                       x="-8"
                       y="4"
@@ -687,10 +779,16 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
               const sx = scaleX(x);
               const isSuppressedX =
                 layerVisibility.showDropLines && activeDropXCoords.some((bx) => Math.abs(bx - sx) < 24);
+              const lastXCoord = scaleX(xTicks[xTicks.length - 1]);
+              const isNearLastX = index < xTicks.length - 1 && Math.abs(lastXCoord - sx) < 30;
+              const showXLabel =
+                !isSuppressedX &&
+                (index === xTicks.length - 1 ||
+                  (index % xTickLabelStride === 0 && (index === 0 || xTickLabelStride === 1 || !isNearLastX)));
               return (
                 <g key={`tick-x-${x}`} transform={`translate(${sx}, ${svgHeight - padding.bottom})`}>
                   <line x1="0" y1="0" x2="0" y2="5" stroke="#334155" strokeWidth="1.5" />
-                  {!isSuppressedX && (index % xTickLabelStride === 0 || index === xTicks.length - 1) && (
+                  {showXLabel && (
                     <text
                       x="0"
                       y="18"
@@ -714,11 +812,11 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
               {tr(axes.yLabel)}
             </text>
 
-            {/* X Axis Title (Positioned cleanly above the horizontal arrow) */}
+            {/* X Axis Title (Centered cleanly below axis ticks without right-edge clipping) */}
             <text
-              x={svgWidth - padding.right + 20}
-              y={svgHeight - padding.bottom - 6}
-              textAnchor="start"
+              x={padding.left + plotWidth / 2}
+              y={svgHeight - 8}
+              textAnchor="middle"
               className="text-xs font-semibold fill-slate-800"
             >
               {tr(axes.xLabel)}
@@ -755,20 +853,23 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({ data, title, vis
       {/* Accessible Curve & Area Legend */}
       <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
         <span className="font-semibold text-slate-500 uppercase tracking-wider text-[11px]">Legend:</span>
-        {visibleCurves.map((curve) => (
-          <div key={`legend-curve-${curve.id}`} className="flex items-center gap-1.5">
-            <span
-              className="w-4 h-0.5 inline-block"
-              style={{
-                backgroundColor: curve.color,
-                borderTop: curve.strokeDasharray && curve.strokeDasharray !== 'none' ? '2px dashed' : 'none',
-                borderColor: curve.color
-              }}
-            ></span>
-            <span className="text-slate-700 font-medium">{tr(curve.name)}</span>
-          </div>
-        ))}
-        {layerVisibility.showSurplus && shadedAreas.map((area) => (
+        {visibleCurves.map((curve) => {
+          const isDashed = Boolean(curve.strokeDasharray && curve.strokeDasharray !== 'none');
+          const borderStyle = curve.strokeDasharray?.startsWith('2') ? 'dotted' : 'dashed';
+          return (
+            <div key={`legend-curve-${curve.id}`} className="flex items-center gap-1.5">
+              <span
+                className="w-4 h-0.5 inline-block"
+                style={{
+                  backgroundColor: isDashed ? 'transparent' : curve.color,
+                  borderTop: isDashed ? `2px ${borderStyle} ${curve.color}` : 'none'
+                }}
+              ></span>
+              <span className="text-slate-700 font-medium">{tr(curve.name)}</span>
+            </div>
+          );
+        })}
+        {layerVisibility.showSurplus && visibleShadedAreas.map((area) => (
           <div key={`legend-area-${area.id}`} className="flex items-center gap-1.5">
             <span
               className="w-3.5 h-3.5 rounded border inline-block"

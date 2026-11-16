@@ -292,6 +292,10 @@ export const publicGoodsModel: EconomicModel = {
       });
     }
 
+    const maxMSB = a1 + a2;
+    const yMax = Math.max(100, Math.ceil(maxMSB / 10) * 10);
+    const yStep = yMax > 110 ? 25 : 20;
+
     return {
       axes: {
         xLabel: { en: 'Quantity of Public Good (Q)', zh: '公共物品提供数量（Q）' },
@@ -300,8 +304,8 @@ export const publicGoodsModel: EconomicModel = {
         xMax: 18,
         xStep: 3,
         yMin: 0,
-        yMax: 100,
-        yStep: 20,
+        yMax,
+        yStep,
         yPrefix: '$'
       },
       curves,

@@ -106,13 +106,18 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
 
           if (ctrl.type === 'slider') {
             const isControlledPriceNone = ctrl.id === 'controlledPrice' && params.priceControlMode === 'none';
+            const isMonopCompLongRunLock =
+              model.id === 'monopolistic-competition' &&
+              ctrl.id === 'demandIntercept' &&
+              (params.marketPhase || model.defaultParams.marketPhase) === 'long_run_tangency';
+            const isSliderMuted = isControlledPriceNone || isMonopCompLongRunLock;
 
             return (
               <div
                 key={ctrl.id}
                 className={`space-y-1.5 p-3 rounded-xl border transition-colors ${
-                  isControlledPriceNone
-                    ? 'bg-slate-50/40 border-slate-200/60 opacity-60'
+                  isSliderMuted
+                    ? 'bg-slate-50/40 border-slate-200/60 opacity-65'
                     : 'bg-slate-50/70 border-slate-100'
                 }`}
               >
@@ -128,8 +133,9 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                   max={ctrl.max}
                   step={ctrl.step}
                   value={currentValue}
+                  disabled={isMonopCompLongRunLock}
                   onChange={(e) => onParamChange(ctrl.id, parseFloat(e.target.value))}
-                  className="w-full accent-blue-600 cursor-pointer"
+                  className={`w-full accent-blue-600 ${isMonopCompLongRunLock ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-mono">
                   <span>{ctrl.min} {ctrl.unit || ''}</span>
@@ -141,6 +147,13 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     {language === 'zh'
                       ? '提示：当前价格管制为“无管制”，该管制价格滑块在上方选择“最高限价”或“最低限价”后生效。'
                       : 'Note: Price control is currently None. Select Price Ceiling or Floor above to activate this price level.'}
+                  </div>
+                )}
+                {isMonopCompLongRunLock && (
+                  <div className="text-[11px] text-amber-700 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200 mt-1">
+                    {language === 'zh'
+                      ? '提示：长期相切模式下，厂商自由进出自动将需求曲线锁定在与 ATC 相切的位置。请切换至短期模式后再自由调节需求强度。'
+                      : 'Note: In Long-Run Tangency mode, free entry/exit locks demand tangent to ATC automatically. Switch to a Short-Run option above to shift demand freely.'}
                   </div>
                 )}
               </div>

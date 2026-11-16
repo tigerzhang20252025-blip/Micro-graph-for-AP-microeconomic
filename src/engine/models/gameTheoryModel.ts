@@ -114,10 +114,10 @@ export const gameTheoryModel: EconomicModel = {
     },
     {
       type: 'slider',
-      id: 'bl1',
+      id: 'tr1',
       label: {
-        en: 'Firm 1 Payoff (Bottom, Left) - Cheat Advantage',
-        zh: '厂商 1 收益（下，左）- 单方背叛获利'
+        en: 'Firm 1 Payoff (Top, Right) - Undercut Victim',
+        zh: '厂商 1 收益（上，右）- 遭遇背叛受损'
       },
       min: 0,
       max: 120,
@@ -130,6 +130,30 @@ export const gameTheoryModel: EconomicModel = {
       label: {
         en: 'Firm 2 Payoff (Top, Right) - Cheat Advantage',
         zh: '厂商 2 收益（上，右）- 单方背叛获利'
+      },
+      min: 0,
+      max: 120,
+      step: 5,
+      unit: '$'
+    },
+    {
+      type: 'slider',
+      id: 'bl1',
+      label: {
+        en: 'Firm 1 Payoff (Bottom, Left) - Cheat Advantage',
+        zh: '厂商 1 收益（下，左）- 单方背叛获利'
+      },
+      min: 0,
+      max: 120,
+      step: 5,
+      unit: '$'
+    },
+    {
+      type: 'slider',
+      id: 'bl2',
+      label: {
+        en: 'Firm 2 Payoff (Bottom, Left) - Undercut Victim',
+        zh: '厂商 2 收益（下，左）- 遭遇背叛受损'
       },
       min: 0,
       max: 120,
@@ -303,8 +327,8 @@ export const gameTheoryModel: EconomicModel = {
           id: 'row-firm1-top',
           label: { en: 'Firm 1: High Price (Cooperate)', zh: '厂商 1：高价（合作合谋）' },
           values: [
-            `($${matrix.TL.p1}, $${matrix.TL.p2})`,
-            `($${matrix.TR.p1}, $${matrix.TR.p2})`,
+            `($${matrix.TL.p1}, $${matrix.TL.p2})${solution.nashEquilibria.includes('TL') ? ' ★ NASH' : ''}`,
+            `($${matrix.TR.p1}, $${matrix.TR.p2})${solution.nashEquilibria.includes('TR') ? ' ★ NASH' : ''}`,
             matrix.TL.p1 > matrix.BL.p1 && matrix.TR.p1 > matrix.BR.p1 ? 'Dominates' : 'Does not strictly dominate'
           ],
           highlight: solution.p1DominantStrategy === 'Top'
@@ -313,8 +337,8 @@ export const gameTheoryModel: EconomicModel = {
           id: 'row-firm1-bottom',
           label: { en: 'Firm 1: Low Price (Cheat)', zh: '厂商 1：低价（削价背叛）' },
           values: [
-            `($${matrix.BL.p1}, $${matrix.BL.p2})`,
-            `($${matrix.BR.p1}, $${matrix.BR.p2}) ${solution.nashEquilibria.includes('BR') ? '★ NASH' : ''}`,
+            `($${matrix.BL.p1}, $${matrix.BL.p2})${solution.nashEquilibria.includes('BL') ? ' ★ NASH' : ''}`,
+            `($${matrix.BR.p1}, $${matrix.BR.p2})${solution.nashEquilibria.includes('BR') ? ' ★ NASH' : ''}`,
             matrix.BL.p1 > matrix.TL.p1 && matrix.BR.p1 > matrix.TR.p1 ? 'Dominates' : 'Does not strictly dominate'
           ],
           highlight: solution.p1DominantStrategy === 'Bottom'

@@ -128,6 +128,8 @@ export interface Translations {
   wrongViewLabel: string;
   correctViewLabel: string;
   whyItMattersLabel: string;
+  coreFormulasHeader: string;
+  frameworkTableHeader: string;
 
   // Common UI Actions
   openGraph: string;
@@ -296,6 +298,8 @@ export const translations: Record<Language, Translations> = {
     wrongViewLabel: '❌ Common Wrong Intuition',
     correctViewLabel: '✅ Rigorous Economic Truth',
     whyItMattersLabel: 'Why It Matters on the Exam',
+    coreFormulasHeader: 'Core AP Microeconomic Formulas',
+    frameworkTableHeader: 'AP Microeconomics 6 Units & Official Exam Weights',
 
     // Common UI Actions
     openGraph: 'Launch Graph Lab',
@@ -462,6 +466,8 @@ export const translations: Record<Language, Translations> = {
     wrongViewLabel: '❌ 考生常见错误直觉',
     correctViewLabel: '✅ 严密经济学科学结论',
     whyItMattersLabel: '考场重要性与分值意义',
+    coreFormulasHeader: 'AP 微观经济学核心公式汇总',
+    frameworkTableHeader: 'AP 微观经济学六大单元与官方考纲权重',
 
     // Common UI Actions
     openGraph: '打开图表实验室',

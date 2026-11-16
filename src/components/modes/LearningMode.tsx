@@ -36,11 +36,11 @@ export const LearningMode: React.FC = () => {
 
   const currentModel = getModelById(currentActivity.modelId);
 
-  // Determine graph parameters based on submitted state:
-  // Before submit: initial params; After submit: target params!
-  const activeParams = isSubmitted
-    ? currentActivity.graphTargetParams
-    : currentActivity.graphInitialParams;
+  // Determine graph parameters based on submitted state, merged with model defaults
+  const activeParams = {
+    ...(currentModel?.defaultParams || {}),
+    ...(isSubmitted ? currentActivity.graphTargetParams : currentActivity.graphInitialParams)
+  };
 
   // Run calculation on the active parameters
   const calculationOutput = currentModel
@@ -142,7 +142,7 @@ export const LearningMode: React.FC = () => {
                   {index + 1}
                 </span>
               )}
-              <span>Unit {act.unit}: {tr(act.title).split('：')[0]}</span>
+              <span>Unit {act.unit}: {tr(act.title).split(/[:：]/)[0]}</span>
             </button>
           );
         })}
@@ -373,7 +373,7 @@ export const LearningMode: React.FC = () => {
               <GraphContainer
                 data={calculationOutput}
                 title={tr(currentActivity.title)}
-                visibilityScope={currentActivity.modelId}
+                visibilityScope={`learning:${currentActivity.id}`}
               />
             )}
 

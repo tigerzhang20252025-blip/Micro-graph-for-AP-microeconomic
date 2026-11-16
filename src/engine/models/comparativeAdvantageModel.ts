@@ -76,8 +76,8 @@ export const comparativeAdvantageModel: EconomicModel = {
         en: 'Terms of Trade (1 Car = ? Wheat)',
         zh: '贸易条件（1 辆汽车 = ？ 蒲式耳小麦）'
       },
-      min: 0.8,
-      max: 2.5,
+      min: 0.5,
+      max: 6.5,
       step: 0.1,
       unit: 'Wheat',
       help: {
@@ -353,7 +353,7 @@ export const comparativeAdvantageModel: EconomicModel = {
               zh: aAdvWheat ? '小麦（成本更低：' + oppCostWheatA.toFixed(2) + ' < ' + oppCostWheatB.toFixed(2) + ' 辆车）' : aAdvCar ? '汽车（成本更低：' + oppCostCarA.toFixed(2) + ' < ' + oppCostCarB.toFixed(2) + ' 蒲式耳小麦）' : '无（机会成本相等）'
             }
           ],
-          highlight: aAdvWheat
+          highlight: aAdvWheat || aAdvCar
         },
         {
           id: 'countryB-row',
@@ -368,7 +368,7 @@ export const comparativeAdvantageModel: EconomicModel = {
               zh: bAdvCar ? '汽车（成本更低：' + oppCostCarB.toFixed(2) + ' < ' + oppCostCarA.toFixed(2) + ' 蒲式耳小麦）' : bAdvWheat ? '小麦（成本更低：' + oppCostWheatB.toFixed(2) + ' < ' + oppCostWheatA.toFixed(2) + ' 辆车）' : '无（机会成本相等）'
             }
           ],
-          highlight: bAdvCar
+          highlight: bAdvCar || bAdvWheat
         }
       ]
     };

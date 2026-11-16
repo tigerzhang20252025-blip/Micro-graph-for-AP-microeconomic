@@ -170,51 +170,55 @@ export const perfectCompetitionModel: EconomicModel = {
       : Math.max(0, Math.min(marketDIntercept, marketSIntercept));
 
     // 2. Individual Firm Cost Curve Specifications
-    // MC = m0 - m1*q + m2*q^2
+    // MC = m0 - m1*q + m2*q^2, calibrated so baseline (m0 = 37.70529, FC = 110) gives min ATC = $35.00 = P*
     const firmCostParams = {
       fixedCost: params.firmFixedCost,
-      m0: 38,
+      m0: 37.70529,
       m1: 1.8,
       m2: 0.075
     };
 
     // Calculate Minimum of AVC
-    const qMinAVC = (3 * firmCostParams.m1) / (4 * firmCostParams.m2); // ~18 units
+    const qMinAVC = (3 * firmCostParams.m1) / (4 * firmCostParams.m2); // 18 units
     const minAVC = evaluateAVC(firmCostParams, qMinAVC);
 
-    // Calculate Minimum of ATC
+    // Calculate Minimum of ATC (coarse scan + Newton-Raphson refinement on d(ATC)/dq = 0)
     let qMinATC = 22;
     let minATC = 999;
-    for (let cq = 8; cq <= 45; cq += 0.1) {
+    for (let cq = 8; cq <= 45; cq += 0.25) {
       const atcCandidate = evaluateATC(firmCostParams, cq);
       if (atcCandidate < minATC) {
         minATC = atcCandidate;
         qMinATC = cq;
       }
     }
+    for (let iter = 0; iter < 6; iter++) {
+      // ATC'(q) = -m1/2 + (2*m2/3)*q - FC/q^2
+      const grad = -firmCostParams.m1 / 2 + (2 * firmCostParams.m2 / 3) * qMinATC - firmCostParams.fixedCost / (qMinATC * qMinATC);
+      const hess = (2 * firmCostParams.m2 / 3) + (2 * firmCostParams.fixedCost) / (qMinATC * qMinATC * qMinATC);
+      if (Math.abs(hess) > 1e-9) {
+        qMinATC = Math.max(8, Math.min(45, qMinATC - grad / hess));
+      }
+    }
+    minATC = evaluateATC(firmCostParams, qMinATC);
 
-    // Profit-Maximizing Firm Output: MR = MC => P* = MC(q) on upward sloping portion
-    // Solve: 38 - 1.8*q + 0.075*q^2 = marketP
+    // Profit-Maximizing Firm Output: MR = MC => m0 - m1*q + m2*q^2 = marketP (upward-sloping branch)
     let firmQ = 0;
     const isShutdown = marketP < minAVC;
 
     if (!isShutdown) {
-      // Find q on rising MC where MC(q) = marketP
-      let bestQ = qMinAVC;
-      let minDiff = 999;
-      for (let cq = qMinAVC; cq <= 45; cq += 0.1) {
-        const diff = Math.abs(evaluateMC(firmCostParams, cq) - marketP);
-        if (diff < minDiff) {
-          minDiff = diff;
-          bestQ = cq;
-        }
+      const disc = firmCostParams.m1 * firmCostParams.m1 - 4 * firmCostParams.m2 * (firmCostParams.m0 - marketP);
+      if (disc >= 0) {
+        firmQ = Math.min(45, Math.max(qMinAVC, (firmCostParams.m1 + Math.sqrt(disc)) / (2 * firmCostParams.m2)));
+      } else {
+        firmQ = qMinAVC;
       }
-      firmQ = bestQ;
     }
 
     const firmATCAtQ = firmQ > 0 ? evaluateATC(firmCostParams, firmQ) : evaluateATC(firmCostParams, qMinATC);
     const perUnitProfit = firmQ > 0 ? marketP - firmATCAtQ : 0;
-    const totalProfit = firmQ > 0 ? perUnitProfit * firmQ : -params.firmFixedCost;
+    const rawTotalProfit = firmQ > 0 ? perUnitProfit * firmQ : -params.firmFixedCost;
+    const totalProfit = Math.abs(rawTotalProfit) < 0.05 ? 0 : rawTotalProfit;
 
     // Market Graph (Primary / Left)
     const marketMaxQ = 1400;
@@ -314,14 +318,23 @@ export const perfectCompetitionModel: EconomicModel = {
     }
 
     if (marketQ > 0 && marketP > marketSIntercept) {
+      const psMarketPoints = marketSIntercept >= 0
+        ? [
+            { x: 0, y: marketSIntercept },
+            { x: marketQ, y: marketP },
+            { x: 0, y: marketP }
+          ]
+        : [
+            { x: 0, y: 0 },
+            { x: Math.min(marketQ, -marketSIntercept / marketSSlope), y: 0 },
+            { x: marketQ, y: marketP },
+            { x: 0, y: marketP }
+          ];
+
       marketShadedAreas.push({
         id: 'market-ps',
         label: { en: `Market Producer Surplus ($${(marketPS / 1000).toFixed(1)}k)`, zh: `市场生产者剩余（$${(marketPS / 1000).toFixed(1)}k）` },
-        points: [
-          { x: 0, y: marketSIntercept },
-          { x: marketQ, y: marketP },
-          { x: 0, y: marketP }
-        ],
+        points: psMarketPoints,
         fill: '#f59e0b',
         opacity: 0.25,
         pattern: 'diagonal-left',
