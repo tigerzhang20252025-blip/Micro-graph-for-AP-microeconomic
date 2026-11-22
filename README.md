@@ -6,7 +6,11 @@ An interactive AP Microeconomics modeling studio, bilingual learning lab, and dy
 
 面向高中生备考 AP 微观经济学考试的**交互式数理模型仿真、双语考点精解与动态真题演练平台**（对齐 College Board 2026–27 官方 CED 考纲）。
 
-[English](#english) · [简体中文](#简体中文)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-microeconomics--lab.pages.dev-2563eb?style=flat-square&logo=cloudflare&logoColor=white)](https://microeconomics-lab.pages.dev)
+[![AP CED](https://img.shields.io/badge/AP%20Microeconomics-CED%202026--27-0f766e?style=flat-square)](#english)
+[![License: MIT](https://img.shields.io/badge/License-MIT-f59e0b?style=flat-square)](LICENSE)
+
+**[🌐 Live Website · 在线体验](https://microeconomics-lab.pages.dev)** · [English](#english) · [简体中文](#简体中文)
 
 </div>
 
@@ -23,6 +27,12 @@ An interactive AP Microeconomics modeling studio, bilingual learning lab, and dy
 - **CED Coverage**: Covers all **6 official AP Microeconomics Units** across **27 registered topics** (**23** Core AP Content, **2** Optional Extensions, **2** Not in Current AP Exam Scope), with **25 active interactive topics** powered by **19 distinct mathematical graph engines**.
 - **Bilingual Switch & Global Search**: Instant switching between **English** and **Simplified Chinese (`中文`)**, plus a `⌘K` / `Ctrl+K` quick spotlight dictionary covering **123 AP Microeconomics terms & acronyms** (`MC`, `ATC`, `DWL`, `MRP`, `MFC`, etc.).
 - **Precision SVG Graphing**: Multi-graph support (e.g., Perfect Competition Industry Market & Individual Firm side-by-side), interactive hover crosshairs, curve layer toggles with one-click **Show all curves**, Liang-Barsky boundary clipping (`clipPolylineToAxes`), anti-collision label placement, and automatic axis expansion (`resolveGraphDomain`) when key points, welfare polygons, or shifted curves extend beyond baseline limits.
+
+### Screenshots
+
+| Interactive Graph Lab (Monopoly CS / Profit / DWL) | Bilingual Topic Library (English) |
+| :---: | :---: |
+| ![Monopoly Graph Lab](docs/screenshots/monopoly-graph-lab.png) | ![English Topic Library](docs/screenshots/topic-library-en.png) |
 
 ### Key Modes
 
@@ -93,6 +103,10 @@ npm run preview
 npm run deploy
 ```
 
+### License
+
+Released under the [MIT License](LICENSE).
+
 ---
 
 <a id="简体中文"></a>
@@ -106,6 +120,12 @@ npm run deploy
 - **考纲全覆盖**：完整收录 AP 微观经济学 **6 大官方单元**共 **27 个专题**（其中 **23** 个核心必考专题、**2** 个拓展专题、**2** 个非考纲参考专题），包含 **25 个激活交互专题**与 **19 个独立数理模型引擎**。
 - **全双语与快捷检索**：支持 **中文 / English** 一键无刷新切换；按 `⌘K`（或 `Ctrl+K`）可呼出覆盖 **123 个高频术语与缩写**（如 `MC`、`ATC`、`DWL`、`MRP`、`MFC` 等）的全局检索弹窗并直达对应图表。
 - **高精度 SVG 教学绘图**：支持双联联动视图（如完全竞争市场与厂商并排图）、鼠标悬停数据十字准星、单曲线图层显隐及 **显示全部曲线** 一键恢复、Liang-Barsky 边界裁剪（`clipPolylineToAxes`）、标签防碰撞排版，以及当关键点、福利阴影多边形或整条曲线越界时自动扩展坐标轴（`resolveGraphDomain`）。
+
+### 界面预览
+
+| 交互图表实验室（垄断模型 CS / 利润 / DWL 着色） | 考纲专题库（简体中文） |
+| :---: | :---: |
+| ![Monopoly Graph Lab](docs/screenshots/monopoly-graph-lab.png) | ![Chinese Topic Library](docs/screenshots/topic-library-zh.png) |
 
 ### 五大核心模式
 
@@ -175,3 +195,7 @@ npm run preview
 # 构建并发布至 Cloudflare Pages
 npm run deploy
 ```
+
+### 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源。
